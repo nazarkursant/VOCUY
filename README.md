@@ -11,6 +11,7 @@ and precise word and character timestamps.
 ![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
 ![No runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-b8efcf)
 ![Runs locally](https://img.shields.io/badge/runs_on-localhost-b8efcf)
+[![License: MIT](https://img.shields.io/badge/License-MIT-b8efcf)](LICENSE)
 
 [Quick start](#quick-start) · [Workflow](#your-first-voiceover) · [Privacy](#privacy) · [Development](#development)
 
@@ -190,3 +191,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow.
 
 Built with the ElevenLabs API. This project is not affiliated with or endorsed by
 ElevenLabs.
+
+## License
+
+Released under the [MIT License](LICENSE). Copyright (c) 2026 nazarkursant.
