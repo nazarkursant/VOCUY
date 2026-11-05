@@ -1,0 +1,34 @@
+# Local voiceovers, transcripts, metadata and logs
+/outputs/
+*.log
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+secrets*.json
+
+# Python environments and caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Operating-system metadata, Finder aliases and editor settings
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+* alias
+*.lnk
+.idea/
+.vscode/
+
+# Original local preview; the public screenshot lives in docs/
+/vo_studio_preview.png

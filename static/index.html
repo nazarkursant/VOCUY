@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Private ElevenLabs voiceover studio. WAV production, word timestamps, and local history.">
+  <title>VO Studio — ElevenLabs</title>
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="brand-copy"><div class="brand-title">VO<span>STUDIO</span><span class="brand-beta">LOCAL</span></div><div class="brand-sub">ElevenLabs voiceover workspace</div></div>
+      </div>
+      <div class="header-actions">
+        <span class="local-badge"><i></i> Local & private</span>
+        <button type="button" class="header-btn" id="openFolderBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 9h18"/></svg> Open outputs</button>
+      </div>
+    </header>
+
+    <section class="intro">
+      <div><div class="eyebrow"><span class="eyebrow-line"></span> AUDIO PRODUCTION / 01</div><h1>Words in.<br><em>Voice out.</em></h1></div>
+      <div class="intro-note">Professional narration, precise timing.<br>One click from script to <b>WAV + alignment JSON.</b></div>
+    </section>
+
+    <main class="workspace">
+      <div class="settings-col">
+        <section class="panel" aria-labelledby="projectHeading">
+          <div class="section-head"><span class="section-index">01</span><h2 id="projectHeading">Project</h2><span class="section-help">Name your export</span></div>
+          <div class="field-grid">
+            <div class="field"><label for="projectName">Project name</label><input id="projectName" type="text" maxlength="100" placeholder="Documentary — Episode 01" value="Voiceover"><div class="field-hint">Used for file naming</div></div>
+            <div class="field"><label for="episodeId">ID <span class="optional">optional</span></label><input id="episodeId" type="text" maxlength="60" placeholder="EP_001"><div class="field-hint">Episode / scene ID</div></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="voiceHeading">
+          <div class="section-head"><span class="section-index">02</span><h2 id="voiceHeading">Voice & model</h2></div>
+          <div class="field api-field"><label for="apiKey">ElevenLabs API key</label><div class="input-with-action"><input type="password" id="apiKey" placeholder="Paste your API key" autocomplete="off" spellcheck="false"><button type="button" class="inline-btn" id="toggleKey" aria-label="Show API key">Show</button></div><div class="field-hint lock-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Never written to disk by this app</div></div>
+          <div class="field"><div class="label-line"><label for="voicePicker">Saved voices</label><button type="button" id="loadVoicesBtn" class="tiny-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5 9a7 7 0 0 1 12-3l3 6M4 12l3 6a7 7 0 0 0 12-3"/></svg> Load voices</button></div><select id="voicePicker" aria-label="Saved voices" disabled><option value="">Load voices using your API key</option></select></div>
+          <div class="field"><label for="voiceId">Voice ID <span class="optional">or paste manually</span></label><input id="voiceId" type="text" placeholder="Paste a voice ID from ElevenLabs" spellcheck="false" autocomplete="off"></div>
+          <div class="field"><label for="modelId">Speech model</label><select id="modelId"><option value="eleven_multilingual_v2">Multilingual v2 — expressive, reliable</option><option value="eleven_flash_v2_5">Flash v2.5 — fast</option><option value="eleven_turbo_v2_5">Turbo v2.5 — legacy fast</option></select><div class="field-hint">Multilingual v2 works well for Ukrainian and English narration</div></div>
+        </section>
+
+        <section class="panel" aria-labelledby="settingsHeading">
+          <div class="section-head"><span class="section-index">03</span><h2 id="settingsHeading">Voice settings</h2><button type="button" id="resetSettings" class="text-button">Reset</button></div>
+          <div class="slider-group">
+            <div class="slider-row"><div class="slider-title"><label for="stability">Stability</label><output id="stabilityValue">0.50</output></div><input id="stability" type="range" min="0" max="1" step="0.01" value="0.50"><div class="slider-tips"><span>Expressive</span><span>Consistent</span></div></div>
+            <div class="slider-row"><div class="slider-title"><label for="similarity">Similarity</label><output id="similarityValue">0.75</output></div><input id="similarity" type="range" min="0" max="1" step="0.01" value="0.75"><div class="slider-tips"><span>Flexible</span><span>Close to original</span></div></div>
+            <div class="slider-row"><div class="slider-title"><label for="style">Style exaggeration</label><output id="styleValue">0.00</output></div><input id="style" type="range" min="0" max="1" step="0.01" value="0"><div class="slider-tips"><span>Natural</span><span>Exaggerated</span></div></div>
+            <div class="slider-row"><div class="slider-title"><label for="speed">Speed</label><output id="speedValue">1.00×</output></div><input id="speed" type="range" min="0.7" max="1.2" step="0.01" value="1"><div class="slider-tips"><span>0.7× slow</span><span>1.2× fast</span></div></div>
+          </div>
+          <label class="toggle-row" for="boost"><div><strong>Speaker boost</strong><span>Enhance resemblance to the original voice</span></div><input type="checkbox" id="boost" checked><span class="toggle-track" aria-hidden="true"></span></label>
+        </section>
+        <section class="panel quality-panel" aria-labelledby="exportHeading">
+          <div class="section-head"><span class="section-index">04</span><h2 id="exportHeading">Audio format</h2></div>
+          <div class="quality-options" role="radiogroup" aria-label="Audio export quality">
+            <label class="quality-option"><input type="radio" name="quality" value="44100" checked><span class="quality-card"><span class="quality-main">44.1 kHz / 16-bit <span class="quality-tag">HIGH QUALITY</span></span><span class="quality-detail">Uncompressed WAV · requires ElevenLabs Pro+</span></span></label>
+            <label class="quality-option"><input type="radio" name="quality" value="24000"><span class="quality-card"><span class="quality-main">24 kHz / 16-bit</span><span class="quality-detail">Uncompressed WAV · lighter option</span></span></label>
+          </div>
+        </section>
+      </div>
+
+      <div class="editor-col">
+        <section class="editor-panel" aria-labelledby="editorHeading">
+          <div class="editor-header"><div><div class="editor-eyebrow">YOUR SCRIPT</div><h2 id="editorHeading">Narration text</h2></div><span class="editor-file-tag">TEXT INPUT</span></div>
+          <textarea id="scriptText" placeholder="Paste your voiceover script here.&#10;&#10;You can use multiple paragraphs. The text will be used for speech generation and then aligned to your finished recording." spellcheck="true" maxlength="10000"></textarea>
+          <div class="editor-footer"><span><span id="characterCount">0</span> / 10,000 characters</span><span><span id="wordEstimate">0</span> words</span><span class="lang-note">Multilingual support</span></div>
+        </section>
+
+        <section class="render-panel" aria-labelledby="renderHeading">
+          <div class="render-top"><div><div class="editor-eyebrow">RENDER QUEUE</div><h2 id="renderHeading">Generate voiceover</h2></div><div class="wave-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+          <div class="render-controls"><button id="generateBtn" type="button" class="generate-button"><span id="generateLabel">Generate WAV + JSON</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7"/></svg></button><p class="render-warning">Makes two billable ElevenLabs API requests: speech + forced alignment.</p></div>
+          <div id="statusBox" class="status-box" role="status" aria-live="polite" hidden><div class="status-top"><span id="statusTitle">Generating...</span><span id="statusPill" class="status-pill">IN PROGRESS</span></div><div class="progress-track"><span id="progressBar"></span></div><p id="statusDetail"></p></div>
+          <div id="resultBox" class="result-box" hidden>
+            <div class="result-top"><div><div class="result-kicker">FINISHED EXPORT</div><h3 id="resultTitle">Voiceover</h3></div><span class="result-check">✓</span></div>
+            <audio id="audioPlayer" controls preload="metadata"></audio>
+            <div class="result-meta" id="resultMeta"></div>
+            <div class="download-actions"><a id="downloadWav" class="download-link primary-download" href="#" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4"/></svg> Download WAV</a><a id="downloadJson" class="download-link" href="#" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4"/></svg> Download JSON</a></div>
+            <button id="retryBtn" type="button" class="retry-button" hidden>Retry alignment (without new TTS)</button>
+          </div>
+        </section>
+
+        <section class="history-panel" aria-labelledby="historyHeading"><div class="history-heading"><div><div class="editor-eyebrow">YOUR WORKSPACE</div><h2 id="historyHeading">Recent exports</h2></div><button type="button" class="text-button" id="refreshHistory">Refresh</button></div><div id="historyList" class="history-list"><div class="history-empty">Your completed voiceovers will show up here.</div></div></section>
+        <p class="footnote">Files stay on this computer in the <strong>outputs/</strong> folder. The API key is not saved to disk. Generated text and audio are saved locally for your history and alignment retries.</p>
+      </div>
+    </main>
+    <footer class="app-footer"><span>VO STUDIO <span class="footer-dot">/</span> 01.0</span><span>Unofficial local tool · Powered by the ElevenLabs API</span></footer>
+  </div>
+  <div class="toast" id="toast" role="alert" aria-live="assertive" hidden></div>
+</body>
+</html>
