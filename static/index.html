@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="description" content="Private ElevenLabs voiceover studio. WAV production, word timestamps, and local history.">
-  <title>VO Studio — ElevenLabs</title>
+  <title>VOCUY — Voiceover studio</title>
   <link rel="stylesheet" href="/style.css">
   <script defer src="/playback.js"></script>
   <script defer src="/app.js"></script>
@@ -15,7 +15,7 @@
     <header class="app-header">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
-        <div class="brand-copy"><div class="brand-title">VO<span>STUDIO</span><span class="brand-beta">LOCAL</span></div><div class="brand-sub">ElevenLabs voiceover workspace</div></div>
+        <div class="brand-copy"><div class="brand-title">VO<span>CUY</span><span class="brand-beta">LOCAL</span></div><div class="brand-sub">Voiceovers with word-level timing</div></div>
       </div>
       <div class="header-actions">
         <span class="local-badge"><i></i> Local & private</span>
@@ -42,7 +42,7 @@
           <div class="field"><div class="label-line"><label for="voicePicker">Saved voices</label><button type="button" id="loadVoicesBtn" class="tiny-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5 9a7 7 0 0 1 12-3l3 6M4 12l3 6a7 7 0 0 0 12-3"/></svg> Load voices</button></div><select id="voicePicker" aria-label="Saved voices" disabled><option value="">Load voices using your API key</option></select></div>
           <div class="field"><label for="voiceId">Voice ID <span class="optional">or paste manually</span></label><input id="voiceId" type="text" placeholder="Paste a voice ID from ElevenLabs" spellcheck="false" autocomplete="off"></div>
           <div class="field"><label for="voiceDisplayName">Voice name <span class="optional">optional</span></label><input id="voiceDisplayName" type="text" maxlength="100" placeholder="Name shown on messages"></div>
-          <div class="field"><label for="modelId">Speech model</label><select id="modelId"><option value="eleven_multilingual_v2">Multilingual v2 — expressive, reliable</option><option value="eleven_flash_v2_5">Flash v2.5 — fast</option><option value="eleven_turbo_v2_5">Turbo v2.5 — legacy fast</option></select><div class="field-hint">Multilingual v2 works well for Ukrainian and English narration</div></div>
+          <div class="field"><label for="modelId">Speech model</label><select id="modelId"><option value="eleven_multilingual_v2">Multilingual v2 — expressive, reliable</option><option value="eleven_flash_v2_5">Flash v2.5 — fast</option><option value="eleven_turbo_v2_5">Turbo v2.5 — legacy fast</option></select><div class="field-hint">Multilingual v2 suits most languages and long-form narration</div></div>
         </section>
 
         <section class="panel" aria-labelledby="settingsHeading">
@@ -70,7 +70,7 @@
           <p id="csvHint" class="csv-hint" hidden>Each row is a sequence. Speech columns play from left to right.</p>
           <textarea id="scriptText" aria-labelledby="editorHeading" placeholder="Paste your voiceover script here." spellcheck="true" maxlength="10000"></textarea>
           <div class="editor-footer"><span><span id="characterCount">0</span><span id="characterLimit"> / 10,000 characters</span></span><span><span id="wordEstimate">0</span> words</span><span id="csvFileName"></span></div>
-          <div id="prepareControls" class="prepare-controls" hidden><p id="parsingHint">Blank paragraphs alternate Voices 1 and 2. Or label each turn with 1., 2., or 3.</p><fieldset id="staticColumnControls" class="static-columns" hidden><legend>Static columns</legend><p>Generate once and reuse in every sequence. Keep the same text in these columns, or fill only the first row.</p><div id="staticColumnChoices"></div></fieldset><label id="cakeHookOption" class="batch-option" hidden><input type="checkbox" id="stripCakeHook"> Omit the opening “Let's explain it with cake.” (when using a prerecorded hook)</label><button id="prepareBtn" type="button" class="header-btn">Prepare speech</button><p id="prepareError" class="inline-error" role="alert" hidden></p></div>
+          <div id="prepareControls" class="prepare-controls" hidden><p id="parsingHint">Blank paragraphs alternate Voices 1 and 2. Or label each turn with 1., 2., or 3.</p><fieldset id="staticColumnControls" class="static-columns" hidden><legend>Static columns</legend><p>Generate once and reuse in every sequence. Keep the same text in these columns, or fill only the first row.</p><div id="staticColumnChoices"></div></fieldset><label id="cakeHookOption" class="batch-option" hidden><input type="checkbox" id="stripCakeHook"> Explainer preset: omit the opening “Let's explain it with cake.” (for a prerecorded hook)</label><button id="prepareBtn" type="button" class="header-btn">Prepare speech</button><p id="prepareError" class="inline-error" role="alert" hidden></p></div>
         </section>
 
         <section id="conversationPanel" class="conversation-panel" aria-labelledby="conversationHeading" hidden>
@@ -116,7 +116,7 @@
     </main>
     <dialog id="historyDialog" class="studio-dialog history-dialog"><div class="dialog-heading"><h2>Recent exports</h2><button type="button" id="closeHistory" class="text-button">Close</button></div><button type="button" class="text-button" id="refreshHistory">Refresh</button><div id="historyList" class="history-list"></div></dialog>
     <dialog id="messageDialog" class="studio-dialog"><form id="messageForm"><div class="dialog-heading"><h2 id="messageDialogTitle">Edit message</h2><button type="button" id="closeMessage" class="text-button">Cancel</button></div><div class="field" id="messageSpeakerField"><label for="messageSpeaker">Voice</label><select id="messageSpeaker"><option value="1">Voice 1</option><option value="2">Voice 2</option><option value="3">Voice 3</option></select></div><p id="sharedMessageHint" class="csv-hint" hidden>This is a static message. Editing or regenerating it updates every sequence that uses it.</p><label class="sr-only" for="messageText">Message text</label><textarea id="messageText" maxlength="10000" required></textarea><button type="submit" class="generate-button">Save message</button></form></dialog>
-    <footer class="app-footer"><span>VO STUDIO <span class="footer-dot">/</span> 01.0</span><span>Unofficial local tool · Powered by the ElevenLabs API</span></footer>
+    <footer class="app-footer"><span>VOCUY <span class="footer-dot">/</span> 01.0</span><span>Unofficial local tool · Powered by the ElevenLabs API</span></footer>
   </div>
   <div class="toast" id="toast" role="alert" aria-live="assertive" hidden></div>
 </body>

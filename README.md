@@ -1,13 +1,13 @@
 <div align="center">
 
-# VO Studio
+# VOCUY
 
 ### Words in. Voice out.
 
-A local ElevenLabs workspace for narration, uncompressed WAV audio,<br>
-and precise word and character timestamps.
+A local voiceover studio for ElevenLabs: uncompressed WAV audio,<br>
+word-level timing and ready-made After Effects compositions.
 
-[![Tests](https://github.com/nazarkursant/11labs-fast-api-interface/actions/workflows/tests.yml/badge.svg)](https://github.com/nazarkursant/11labs-fast-api-interface/actions/workflows/tests.yml)
+[![Tests](https://github.com/nazarkursant/vocuy/actions/workflows/tests.yml/badge.svg)](https://github.com/nazarkursant/vocuy/actions/workflows/tests.yml)
 ![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
 ![No runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-b8efcf)
 ![Runs locally](https://img.shields.io/badge/runs_on-localhost-b8efcf)
@@ -17,9 +17,9 @@ and precise word and character timestamps.
 
 </div>
 
-![VO Studio's dark interface with voice controls, narration editor and WAV export](docs/preview.jpg)
+![VOCUY's dark interface with voice controls, narration editor and WAV export](docs/preview.jpg)
 
-VO Studio brings script entry, voice controls, audio playback and alignment exports
+VOCUY brings script entry, voice controls, audio playback and alignment exports
 into one browser window. The app runs on your computer with **Python alone**: no
 package installation, frontend build, database or hosted backend to configure.
 
@@ -48,8 +48,8 @@ Voice, model and format availability depend on your ElevenLabs account.
 You need **Python 3.9 or newer**, a modern browser and an ElevenLabs API key.
 
 ```sh
-git clone https://github.com/nazarkursant/11labs-fast-api-interface.git
-cd 11labs-fast-api-interface
+git clone https://github.com/nazarkursant/vocuy.git
+cd vocuy
 python3 server.py
 ```
 
@@ -58,8 +58,8 @@ using **Code → Download ZIP**, extract it, and use a launcher:
 
 | Platform | Launch |
 | --- | --- |
-| macOS | Double-click `Launch VO Studio.command`. If needed, run `chmod +x "Launch VO Studio.command"` first. |
-| Windows | Double-click `Launch VO Studio.bat`. Install Python with the launcher or “Add Python to PATH” enabled. |
+| macOS | Double-click `Launch VOCUY.command`. If needed, run `chmod +x "Launch VOCUY.command"` first. |
+| Windows | Double-click `Launch VOCUY.bat`. Install Python with the launcher or “Add Python to PATH” enabled. |
 | Linux | Run `python3 server.py` from the project folder. |
 
 The app opens your browser at **http://127.0.0.1:8765**. If that port is occupied,
@@ -139,25 +139,36 @@ the app's history. No ZIP is created.
 ### CSV batch mode
 
 Select **Batch**, choose a voice and import a UTF-8 CSV with **Choose CSV** (or
-paste the CSV). Three formats are supported:
+paste the CSV). Two layouts are supported:
 
-- **Custom columns:** `video_id,intro,narration,outro`, or your own speech column
-  names. Each row is a sequence; its speech columns play from left to right.
-  `video_id` and optional `script_revision` are metadata and are not spoken.
+- **Columns (one row per video):** `video_id,intro,narration,outro`, or your own
+  speech column names. Each row is a sequence; its speech columns play from left
+  to right. `video_id` and optional `script_revision` are metadata and are not spoken.
+- **Segments (one row per clip):** `video_id,segment_id,text`, with optional
+  `script_revision`. Rows sharing a `video_id` form one sequence, in file order.
 
-- **Topics:** `video_id,topic,what_is_it,how_to_use_it,cake_explanation`. Each row
-  becomes four clips, in `topic`, `what`, `usage`, `cake` order. Additional columns
-  are allowed. This accepts the reference project's `topics.csv` and
-  `sheet_snapshot.csv` directly.
-- **Segments:** `video_id,segment_id,text`, with optional `script_revision`.
-  Each row is one clip. This accepts the reference project's `vo_segments.csv`.
+Examples: [segments CSV](examples/batch_segments.csv) and the shared intro/outro
+files below.
 
-Examples: [topics CSV](examples/batch_topics.csv) and
-[segments CSV](examples/batch_segments.csv). Quoted commas, multiline text and
+#### Example preset: four-part explainer
+
+The app also ships with a built-in preset for a short explainer series, included
+as an example of a fixed batch structure. A CSV with the columns
+`video_id,topic,what_is_it,how_to_use_it,cake_explanation` is recognised
+automatically, and each row becomes four clips in `topic`, `what`, `usage`,
+`cake` order (a title, a definition, a practical use and an everyday analogy).
+Additional columns are ignored. See the [explainer CSV](examples/batch_topics.csv).
+
+When this preset is detected, an optional **Explainer preset: omit the opening
+“Let's explain it with cake.”** checkbox appears. It removes only that leading phrase from the
+analogy clips, for series that use a prerecorded hook instead. It is off by
+default. If your series has a different shape, use the columns layout above.
+
+Quoted commas, multiline text and
 UTF-8 BOMs are supported. IDs use letters, numbers, underscores or hyphens;
 unsafe filenames, empty text and duplicate video/segment pairs are rejected.
 The batch limit is 1,000 clips and 500,000 spoken characters, with at most 10,000
-characters in any one clip. A 100-video topics CSV produces 400 clips.
+characters in any one clip. A 100-row explainer CSV produces 400 clips.
 
 After importing, select **Static columns** in the app. Each selected column is
 generated once per batch and its recording is reused in every sequence preview.
@@ -175,8 +186,8 @@ Five-row examples:
 
 **Prepare batch** shows the sequence, message and recording counts. Review
 or edit the messages, choose a destination folder, then generate. The selected
-folder becomes the batch root, using the reference project's candidate/pass
-structure with this app's WAV audio:
+folder becomes the batch root. Every take is saved as a review candidate in
+numbered passes, so retries never overwrite earlier audio:
 
 ```text
 <chosen folder>/
@@ -202,13 +213,9 @@ The root `scripts/` copy preserves the initial text; the text beside each
 candidate records what that take actually says. Candidate metadata includes
 voice settings, revision and attempt, but no API key. Candidates are marked
 `REVIEW_PENDING`; the app does not automatically approve them or copy them into
-an approved-assets folder. This mode implements CSV preparation, generation,
-playback and individual retries; it does not run the reference project's ASR or
-manual approval commands.
-
-The optional **Omit the opening “Let's explain it with cake.”** checkbox removes
-only that leading phrase from cake segments, for projects that use a prerecorded
-hook. It is off by default. No pronunciation substitutions run automatically.
+an approved-assets folder. Batch mode covers CSV preparation, generation,
+playback and individual retries; reviewing and approving candidates is left to
+your own workflow. No pronunciation substitutions run automatically.
 
 Use **Preview** to choose one sequence or listen to all sequences in order.
 The same timeline and hover controls work in Batch mode. Multi voice and Batch
@@ -230,7 +237,7 @@ requests. To use an older recording, choose **Recent exports → Use**; it opens
 as a single voiceover. Multi voice and Batch export their current generated session.
 
 In After Effects, select **File → Scripts → Run Script File**, choose the JSX,
-then save your project. The script creates a new VO Studio folder in the current
+then save your project. The script creates a new VOCUY folder in the current
 project with imported audio and these compositions:
 
 | Mode | Composition contents |
@@ -313,7 +320,7 @@ by Git.
   and your script plus generated WAV for forced alignment.
 
 Read [Privacy and data flow](docs/PRIVACY.md) for storage details and cleanup
-instructions. VO Studio is intended for local use and has no user-authentication
+instructions. VOCUY is intended for local use and has no user-authentication
 system.
 
 ## How it works
@@ -345,8 +352,8 @@ static/                   Browser interface, styles and JavaScript
 tests/test_app.py         Offline tests with mocked provider responses
 docs/                     Interface preview and privacy documentation
 .github/workflows/        Cross-platform tests and JavaScript syntax check
-Launch VO Studio.command  macOS launcher
-Launch VO Studio.bat      Windows launcher
+Launch VOCUY.command  macOS launcher
+Launch VOCUY.bat      Windows launcher
 ```
 
 ## Development

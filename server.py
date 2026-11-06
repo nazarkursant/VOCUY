@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""VO Studio: private localhost browser interface for ElevenLabs speech + forced alignment.
+"""VOCUY: private localhost browser interface for ElevenLabs speech + forced alignment.
 Python 3.9+, standard library only. API keys are kept only in RAM for the request.
 """
 from __future__ import annotations
@@ -56,7 +56,7 @@ def redact_error(message: str, key: str = '') -> str:
 
 def api_request(path: str, key: str, data: bytes | None = None,
                 content_type: str | None = None, timeout: int = 300) -> bytes:
-    headers = {'xi-api-key': key, 'User-Agent': 'VO-Studio-Local/1.0'}
+    headers = {'xi-api-key': key, 'User-Agent': 'VOCUY-Local/1.0'}
     if content_type:
         headers['Content-Type'] = content_type
     req = urllib.request.Request(API_ROOT + path, data=data, headers=headers,
@@ -148,7 +148,7 @@ def create_wav(raw_pcm: bytes, target: Path, sample_rate: int) -> float:
 
 
 def forced_alignment(key: str, wav_path: Path, script: str) -> dict:
-    boundary = '----VOStudio' + uuid.uuid4().hex
+    boundary = '----VOCUY' + uuid.uuid4().hex
     parts = [
         f'--{boundary}\r\nContent-Disposition: form-data; name="text"\r\n\r\n'.encode(),
         script.encode('utf-8'),
@@ -547,7 +547,7 @@ def export_after_effects(request):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = 'VOStudio/1.0'
+    server_version = 'VOCUY/1.0'
 
     def log_message(self, fmt, *args):
         # Never log POST payloads, API keys or scripts.
@@ -805,7 +805,7 @@ def main():
         server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     server.daemon_threads = True
     address = f'http://127.0.0.1:{server.server_port}'
-    print('\n  VO STUDIO  •  ELEVENLABS')
+    print('\n  VOCUY  •  LOCAL VOICEOVER STUDIO')
     print('  ' + '─' * 40)
     print('  Browser:  ' + address)
     print('  Outputs:  ' + str(OUTPUT_DIR))
@@ -815,7 +815,7 @@ def main():
     try:
         server.serve_forever(poll_interval=0.3)
     except KeyboardInterrupt:
-        print('\nStopping VO Studio…')
+        print('\nStopping VOCUY…')
     finally:
         server.server_close()
 

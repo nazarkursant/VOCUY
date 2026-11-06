@@ -184,4 +184,4 @@ def render_script(manifest):
     # JSON is a literal, never evaluated as code. ASCII escaping also handles the
     # Unicode line separators rejected by the older ExtendScript parser.
     payload = json.dumps(manifest, ensure_ascii=True, allow_nan=False, separators=(',', ':'))
-    return TEMPLATE.read_text('utf8').replace('/*__VO_STUDIO_MANIFEST__*/', payload)
+    return TEMPLATE.read_text('utf8').replace('/*__VOCUY_MANIFEST__*/', payload)

@@ -1,4 +1,4 @@
-"""CSV batch input and per-video candidate folders, inspired by the SNAGA pipeline."""
+"""CSV batch input and per-video candidate folders, with a candidate/pass folder structure for review."""
 import csv
 import io
 import json

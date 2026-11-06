@@ -1,6 +1,6 @@
-# Contributing to VO Studio
+# Contributing to VOCUY
 
-VO Studio is intentionally small: a Python standard-library server and a plain
+VOCUY is intentionally small: a Python standard-library server and a plain
 HTML, CSS and JavaScript interface. Keep setup simple and changes focused.
 
 ## Run locally

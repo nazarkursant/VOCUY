@@ -227,7 +227,7 @@ class TestAfterEffects(unittest.TestCase):
         self.assertNotEqual(first['filename'], second['filename'])
         self.assertEqual((self.destination / first['filename']).read_text('utf8'), contents)
         self.assertIn(json.dumps(text, ensure_ascii=True), contents)
-        self.assertNotIn('/*__VO_STUDIO_MANIFEST__*/', contents)
+        self.assertNotIn('/*__VOCUY_MANIFEST__*/', contents)
         self.assertNotIn('api_key', contents)
 
     def test_invalid_settings_ids_busy_and_missing_destination(self):

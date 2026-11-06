@@ -52,7 +52,7 @@ async function api(endpoint, body) {
   try {
     response = await fetch(endpoint, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
   } catch (_) {
-    throw new Error('Local server unavailable. Please relaunch VO Studio.');
+    throw new Error('Local server unavailable. Please relaunch VOCUY.');
   }
   let json;
   try { json = await response.json(); } catch (_) { throw new Error('Unexpected response from the local app.'); }
@@ -388,7 +388,7 @@ function setMode(next) {
   $('conversationHeading').textContent=mode==='batch'?'Batch clips':'Conversation';
   $('scriptText').maxLength=mode==='batch'?1000000:10000;
   $('scriptText').placeholder=mode==='batch'?'video_id,segment_id,text\nVIDEO_001,topic,"A short title"\nVIDEO_001,what,"The explanation goes here."':mode==='multi'?'1. Hi, how are you?\n2. Good! Is Alex joining?\n1. Yes, here he is.\n3. Hello, everyone!':'Paste your voiceover script here.';
-  $('parsingHint').textContent=mode==='batch'?'Use video_id followed by speech columns (e.g. intro, narration, outro). Topics and video_id / segment_id / text CSVs also work.':'Blank paragraphs alternate Voices 1 and 2. Or label each turn with 1., 2., or 3.';
+  $('parsingHint').textContent=mode==='batch'?'Use video_id followed by speech columns (e.g. intro, narration, outro). The explainer preset and video_id / segment_id / text CSVs also work.':'Blank paragraphs alternate Voices 1 and 2. Or label each turn with 1., 2., or 3.';
   $('characterLimit').textContent=mode==='batch'?' CSV characters':' / 10,000 characters';
   $('csvFileName').hidden=mode!=='batch';
   $('generationHint').textContent=mode==='batch'?'Saves each sequence under audio/candidates/ and static recordings once under audio/shared/. Earlier takes are kept.':'Speech + forced alignment use ElevenLabs credits.';

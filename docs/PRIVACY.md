@@ -1,6 +1,6 @@
 # Privacy and data flow
 
-VO Studio runs on your computer. Speech synthesis and forced alignment run on
+VOCUY runs on your computer. Speech synthesis and forced alignment run on
 ElevenLabs, so generation requires an internet connection.
 
 ## What goes where

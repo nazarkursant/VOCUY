@@ -34,7 +34,7 @@ const context={app:{project,beginUndoGroup(){},endUndoGroup(){}},File,$:{fileNam
   alert(message){result.alerts.push(message);}};
 const source=fs.readFileSync(process.argv[2],'utf8').replace(/^#target[^\n]*\n/,'');
 vm.runInNewContext(source,context,{timeout:10000});
-if(result.alerts.some(s=>!s.startsWith('VO Studio: created')))throw new Error(result.alerts.join('\n'));
+if(result.alerts.some(s=>!s.startsWith('VOCUY: created')))throw new Error(result.alerts.join('\n'));
 result.comps=result.comps.map(c=>({name:c.name,width:c.width,height:c.height,duration:c.duration,
   audio:c.allLayers.filter(l=>l.kind==='audio').map(l=>({start:l.startTime,end:l.outPoint,label:l.label,markers:l.props['ADBE Marker'].keys})),
   text:c.allLayers.filter(l=>l.kind==='text').map(l=>({start:l.inPoint,end:l.outPoint,label:l.label,keys:l.props['ADBE Text Properties'].props['ADBE Text Document'].keys}))}));

@@ -81,18 +81,18 @@ def choose_folder():
     """Use the host's picker; a typed-path option is also available in the UI."""
     try:
         if sys.platform == 'darwin':
-            command = ['osascript', '-e', 'POSIX path of (choose folder with prompt "Choose a folder for VO Studio audio")']
+            command = ['osascript', '-e', 'POSIX path of (choose folder with prompt "Choose a folder for VOCUY audio")']
         elif os.name == 'nt':
             command = ['powershell', '-NoProfile', '-STA', '-Command',
                        'Add-Type -AssemblyName System.Windows.Forms; '
                        '$picker = New-Object System.Windows.Forms.FolderBrowserDialog; '
-                       '$picker.Description = "Choose a folder for VO Studio audio"; '
+                       '$picker.Description = "Choose a folder for VOCUY audio"; '
                        'if ($picker.ShowDialog() -eq "OK") { $picker.SelectedPath }']
         else:
             command = [sys.executable, '-c',
                        'import tkinter as tk; from tkinter import filedialog; '
                        'root=tk.Tk(); root.withdraw(); '
-                       'print(filedialog.askdirectory(title="Choose a folder for VO Studio audio")); root.destroy()']
+                       'print(filedialog.askdirectory(title="Choose a folder for VOCUY audio")); root.destroy()']
         result = subprocess.run(command, capture_output=True, text=True, timeout=180)
     except (OSError, subprocess.TimeoutExpired):
         raise ValueError('Folder picker unavailable. Enter the folder path below instead.') from None
