@@ -39,14 +39,7 @@ class TestApp(unittest.TestCase):
         })
 
     def create_job(self, config):
-        job_id = 'a' * 32
-        app.JOBS[job_id] = {
-            'id':job_id,'name':config['name'],'episode_id':config['episode_id'],
-            'voice_id':config['voice_id'],'voice_name':config['voice_name'],
-            'model_id':config['model_id'],'sample_rate':config['sample_rate'],
-            'created_at':'2025-01-01T12:00:00+00:00','status':'working','step':'Queued',
-            'error':'','has_wav':False,'has_alignment':False,'duration':None,'word_count':None
-        }
+        job_id = app.create_job(config)
         self.assertTrue(app.GENERATE_LOCK.acquire(blocking=False))
         return job_id
 
@@ -77,7 +70,10 @@ class TestApp(unittest.TestCase):
         self.assertEqual(item['word_count'],1)
         self.assertAlmostEqual(item['duration'],2)
         self.assertEqual(len(requests),2)
-        directory=app.OUTPUT_DIR/job_id
+        directory=app.job_directory(job_id)
+        self.assertEqual(directory.relative_to(app.OUTPUT_DIR.resolve()).parts,
+                         ('recordings', 'Sample - Episode 01', 'Episode SCENE_01',
+                          'Voiceover - Test narrator', 'Take 01'))
         wav=list(directory.glob('*.wav'))[0]
         with wave.open(str(wav),'rb') as wf:
             self.assertEqual(wf.getnframes(),48000)
@@ -152,7 +148,7 @@ class TestApp(unittest.TestCase):
         self.assertTrue(app.GENERATE_LOCK.acquire(blocking=False))
         app.run_retry(job_id, config['api_key'])
         self.assertEqual(app.JOBS[job_id]['status'], 'partial')
-        for file in (app.OUTPUT_DIR / job_id).glob('*.json'):
+        for file in app.job_directory(job_id).glob('*.json'):
             saved = file.read_text()
             self.assertNotIn(config['api_key'], saved)
             self.assertNotIn(str(app.OUTPUT_DIR), saved)
@@ -168,7 +164,7 @@ class TestApp(unittest.TestCase):
         app.api_request = fake_api
         app.run_generation(job_id, config)
         self.assertEqual(app.JOBS[job_id]['status'], 'failed')
-        saved = (app.OUTPUT_DIR / job_id / 'metadata.json').read_text()
+        saved = (app.job_directory(job_id) / 'metadata.json').read_text()
         self.assertNotIn(config['api_key'], saved)
         self.assertNotIn(str(app.APP_DIR), saved)
         self.assertIn('OSError', saved)

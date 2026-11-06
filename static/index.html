@@ -7,6 +7,7 @@
   <meta name="description" content="Private ElevenLabs voiceover studio. WAV production, word timestamps, and local history.">
   <title>VO Studio — ElevenLabs</title>
   <link rel="stylesheet" href="/style.css">
+  <script defer src="/playback.js"></script>
   <script defer src="/app.js"></script>
 </head>
 <body>
@@ -22,11 +23,7 @@
       </div>
     </header>
 
-    <section class="intro">
-      <div><div class="eyebrow"><span class="eyebrow-line"></span> AUDIO PRODUCTION / 01</div><h1>Words in.<br><em>Voice out.</em></h1></div>
-      <div class="intro-note">Professional narration, precise timing.<br>One click from script to <b>WAV + alignment JSON.</b></div>
-    </section>
-
+    <div class="mode-bar"><div class="mode-picker" role="group" aria-label="Voice mode"><button type="button" id="singleMode" aria-pressed="true">One voice</button><button type="button" id="multiMode" aria-pressed="false">Multi voice</button><button type="button" id="batchMode" aria-pressed="false">Batch</button></div><p id="modeHint">One voice for your whole script.</p><button id="historyBtn" type="button" class="text-button">Recent exports</button></div>
     <main class="workspace">
       <div class="settings-col">
         <section class="panel" aria-labelledby="projectHeading">
@@ -40,8 +37,11 @@
         <section class="panel" aria-labelledby="voiceHeading">
           <div class="section-head"><span class="section-index">02</span><h2 id="voiceHeading">Voice & model</h2></div>
           <div class="field api-field"><label for="apiKey">ElevenLabs API key</label><div class="input-with-action"><input type="password" id="apiKey" placeholder="Paste your API key" autocomplete="off" spellcheck="false"><button type="button" class="inline-btn" id="toggleKey" aria-label="Show API key">Show</button></div><div class="field-hint lock-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Never written to disk by this app</div></div>
+          <div id="voiceTabs" class="voice-tabs" role="group" aria-label="Voice profiles" hidden><button type="button" data-voice="0" aria-pressed="true">Voice 1</button><button type="button" data-voice="1" aria-pressed="false">Voice 2</button><button type="button" data-voice="2" aria-pressed="false">Voice 3</button></div>
+          <p id="voiceProfileHint" class="profile-hint" hidden>Settings below belong to Voice 1.</p>
           <div class="field"><div class="label-line"><label for="voicePicker">Saved voices</label><button type="button" id="loadVoicesBtn" class="tiny-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5 9a7 7 0 0 1 12-3l3 6M4 12l3 6a7 7 0 0 0 12-3"/></svg> Load voices</button></div><select id="voicePicker" aria-label="Saved voices" disabled><option value="">Load voices using your API key</option></select></div>
           <div class="field"><label for="voiceId">Voice ID <span class="optional">or paste manually</span></label><input id="voiceId" type="text" placeholder="Paste a voice ID from ElevenLabs" spellcheck="false" autocomplete="off"></div>
+          <div class="field"><label for="voiceDisplayName">Voice name <span class="optional">optional</span></label><input id="voiceDisplayName" type="text" maxlength="100" placeholder="Name shown on messages"></div>
           <div class="field"><label for="modelId">Speech model</label><select id="modelId"><option value="eleven_multilingual_v2">Multilingual v2 — expressive, reliable</option><option value="eleven_flash_v2_5">Flash v2.5 — fast</option><option value="eleven_turbo_v2_5">Turbo v2.5 — legacy fast</option></select><div class="field-hint">Multilingual v2 works well for Ukrainian and English narration</div></div>
         </section>
 
@@ -65,29 +65,57 @@
       </div>
 
       <div class="editor-col">
-        <section class="editor-panel" aria-labelledby="editorHeading">
-          <div class="editor-header"><div><div class="editor-eyebrow">YOUR SCRIPT</div><h2 id="editorHeading">Narration text</h2></div><span class="editor-file-tag">TEXT INPUT</span></div>
-          <textarea id="scriptText" placeholder="Paste your voiceover script here.&#10;&#10;You can use multiple paragraphs. The text will be used for speech generation and then aligned to your finished recording." spellcheck="true" maxlength="10000"></textarea>
-          <div class="editor-footer"><span><span id="characterCount">0</span> / 10,000 characters</span><span><span id="wordEstimate">0</span> words</span><span class="lang-note">Multilingual support</span></div>
+        <section id="scriptPanel" class="editor-panel" aria-labelledby="editorHeading">
+          <div class="editor-header"><h2 id="editorHeading">Narration text</h2><div id="csvUpload" hidden><label class="header-btn" for="csvFile">Choose CSV</label><input id="csvFile" type="file" accept=".csv,text/csv" class="sr-only"></div></div>
+          <p id="csvHint" class="csv-hint" hidden>Each row is a sequence. Speech columns play from left to right.</p>
+          <textarea id="scriptText" aria-labelledby="editorHeading" placeholder="Paste your voiceover script here." spellcheck="true" maxlength="10000"></textarea>
+          <div class="editor-footer"><span><span id="characterCount">0</span><span id="characterLimit"> / 10,000 characters</span></span><span><span id="wordEstimate">0</span> words</span><span id="csvFileName"></span></div>
+          <div id="prepareControls" class="prepare-controls" hidden><p id="parsingHint">Blank paragraphs alternate Voices 1 and 2. Or label each turn with 1., 2., or 3.</p><fieldset id="staticColumnControls" class="static-columns" hidden><legend>Static columns</legend><p>Generate once and reuse in every sequence. Keep the same text in these columns, or fill only the first row.</p><div id="staticColumnChoices"></div></fieldset><label id="cakeHookOption" class="batch-option" hidden><input type="checkbox" id="stripCakeHook"> Omit the opening “Let's explain it with cake.” (when using a prerecorded hook)</label><button id="prepareBtn" type="button" class="header-btn">Prepare speech</button><p id="prepareError" class="inline-error" role="alert" hidden></p></div>
         </section>
 
-        <section class="render-panel" aria-labelledby="renderHeading">
-          <div class="render-top"><div><div class="editor-eyebrow">RENDER QUEUE</div><h2 id="renderHeading">Generate voiceover</h2></div><div class="wave-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
-          <div class="render-controls"><button id="generateBtn" type="button" class="generate-button"><span id="generateLabel">Generate WAV + JSON</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7"/></svg></button><p class="render-warning">Makes two billable ElevenLabs API requests: speech + forced alignment.</p></div>
+        <section id="conversationPanel" class="conversation-panel" aria-labelledby="conversationHeading" hidden>
+          <div class="conversation-heading"><div><h2 id="conversationHeading">Conversation</h2><p id="conversationSummary" role="status" aria-live="polite"></p></div><button id="editScriptBtn" type="button" class="text-button">Edit script</button></div>
+          <div id="sequenceFilter" class="sequence-filter" hidden><label for="sequencePicker">Preview</label><select id="sequencePicker"><option value="">All sequences</option></select></div>
+          <p id="scriptChanged" class="inline-error" hidden>Your script changed. Prepare it again to update these messages.</p>
+          <div id="messageList" class="message-list" role="list" aria-label="Speech messages" tabindex="0"></div>
+          <div id="timeline" class="timeline" hidden>
+            <div class="timeline-controls"><button id="playAllBtn" class="play-all" type="button" aria-label="Play all messages">▶</button><span id="timelineCurrent">0:00</span><span class="timeline-label" id="timelineLabel">Listen in order</span><span id="timelineTotal">0:00</span></div>
+            <div id="timelineClips" class="timeline-clips" aria-label="Messages in playback order"></div>
+            <input id="timelineSeek" type="range" min="0" max="1" value="0" step="0.01" aria-label="Conversation playback position">
+            <audio id="conversationAudio" preload="metadata" hidden></audio>
+          </div>
+        </section>
+
+        <section id="singleResultPanel" class="render-panel" hidden>
           <div id="statusBox" class="status-box" role="status" aria-live="polite" hidden><div class="status-top"><span id="statusTitle">Generating...</span><span id="statusPill" class="status-pill">IN PROGRESS</span></div><div class="progress-track"><span id="progressBar"></span></div><p id="statusDetail"></p></div>
           <div id="resultBox" class="result-box" hidden>
-            <div class="result-top"><div><div class="result-kicker">FINISHED EXPORT</div><h3 id="resultTitle">Voiceover</h3></div><span class="result-check">✓</span></div>
+            <div class="result-top"><h3 id="resultTitle">Voiceover</h3><span id="resultMeta" class="result-meta"></span></div>
             <audio id="audioPlayer" controls preload="metadata"></audio>
-            <div class="result-meta" id="resultMeta"></div>
-            <div class="download-actions"><a id="downloadWav" class="download-link primary-download" href="#" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4"/></svg> Download WAV</a><a id="downloadJson" class="download-link" href="#" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4"/></svg> Download JSON</a></div>
+            <div class="download-actions"><a id="downloadWav" class="download-link" href="#" download>WAV</a><a id="downloadJson" class="download-link" href="#" download>Timing JSON</a></div>
             <button id="retryBtn" type="button" class="retry-button" hidden>Retry alignment (without new TTS)</button>
           </div>
         </section>
 
-        <section class="history-panel" aria-labelledby="historyHeading"><div class="history-heading"><div><div class="editor-eyebrow">YOUR WORKSPACE</div><h2 id="historyHeading">Recent exports</h2></div><button type="button" class="text-button" id="refreshHistory">Refresh</button></div><div id="historyList" class="history-list"><div class="history-empty">Your completed voiceovers will show up here.</div></div></section>
-        <p class="footnote">Files stay on this computer in the <strong>outputs/</strong> folder. The API key is not saved to disk. Generated text and audio are saved locally for your history and alignment retries.</p>
+        <section class="export-panel" aria-label="Destination and generation">
+          <div class="destination-panel"><label for="destinationPath">Destination folder</label><div class="destination-controls"><input id="destinationPath" type="text" placeholder="Choose a folder or enter its full path" autocomplete="off" spellcheck="false"><button type="button" id="chooseFolderBtn" class="header-btn">Choose folder</button><button type="button" id="useFolderBtn" class="text-button">Use path</button></div><p id="destinationHint">Choose where to save your files.</p></div>
+          <button id="generateBtn" type="button" class="generate-button" disabled><span id="generateLabel">Generate WAV + JSON</span><span aria-hidden="true">→</span></button>
+          <button type="button" id="generateConversationBtn" class="generate-button" hidden disabled>Generate conversation</button>
+          <p class="render-warning" id="generationHint">Speech + forced alignment use ElevenLabs credits.</p>
+          <div class="ae-export" aria-label="After Effects export">
+            <div class="ae-settings">
+              <label for="aeResolution">Resolution<select id="aeResolution"><option value="1080x1920">Vertical · 1080 × 1920</option><option value="1920x1080">Landscape · 1920 × 1080</option><option value="1080x1080">Square · 1080 × 1080</option></select></label>
+              <label for="aeSubtitles">Subtitles<select id="aeSubtitles"><option value="words">Words</option><option value="phrases">Phrases</option><option value="off">Off</option></select></label>
+              <label for="aeFps">Frame rate<select id="aeFps"><option>23.976</option><option>24</option><option>25</option><option>29.97</option><option selected>30</option><option>50</option><option>59.94</option><option>60</option></select></label>
+            </div>
+            <button id="createAeBtn" class="ae-button" type="button" disabled aria-describedby="aeHint">Create an After Effects Composition</button>
+            <p id="aeHint" class="ae-hint">Generate audio and word timings to export. Word markers are included with subtitles Off.</p>
+            <p id="aeResult" class="ae-result" role="status" hidden><span id="aeResultText"></span> <a id="downloadAe" download>Download JSX</a><br>In After Effects: File → Scripts → Run Script File. Keep the referenced WAV files.</p>
+          </div>
+        </section>
       </div>
     </main>
+    <dialog id="historyDialog" class="studio-dialog history-dialog"><div class="dialog-heading"><h2>Recent exports</h2><button type="button" id="closeHistory" class="text-button">Close</button></div><button type="button" class="text-button" id="refreshHistory">Refresh</button><div id="historyList" class="history-list"></div></dialog>
+    <dialog id="messageDialog" class="studio-dialog"><form id="messageForm"><div class="dialog-heading"><h2 id="messageDialogTitle">Edit message</h2><button type="button" id="closeMessage" class="text-button">Cancel</button></div><div class="field" id="messageSpeakerField"><label for="messageSpeaker">Voice</label><select id="messageSpeaker"><option value="1">Voice 1</option><option value="2">Voice 2</option><option value="3">Voice 3</option></select></div><p id="sharedMessageHint" class="csv-hint" hidden>This is a static message. Editing or regenerating it updates every sequence that uses it.</p><label class="sr-only" for="messageText">Message text</label><textarea id="messageText" maxlength="10000" required></textarea><button type="submit" class="generate-button">Save message</button></form></dialog>
     <footer class="app-footer"><span>VO STUDIO <span class="footer-dot">/</span> 01.0</span><span>Unofficial local tool · Powered by the ElevenLabs API</span></footer>
   </div>
   <div class="toast" id="toast" role="alert" aria-live="assertive" hidden></div>

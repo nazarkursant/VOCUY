@@ -17,10 +17,14 @@ binds to `127.0.0.1`. There are no packages to install or frontend build steps.
 ```sh
 python3 -m unittest discover -s tests -v
 node --check static/app.js
+node --check static/playback.js
+node --test tests/test_playback.js tests/test_export_ui.js
 ```
 
 Node.js is optional for development; it is only used here to check JavaScript
 syntax. The Python tests fake ElevenLabs responses and use temporary files.
+The export checks also execute generated JSX against an After Effects API test
+double when Node.js is available; they do not replace a smoke test in After Effects.
 They need permission to open a temporary localhost port, but no API key or
 internet access. GitHub Actions runs the same checks.
 

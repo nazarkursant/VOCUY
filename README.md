@@ -37,6 +37,8 @@ package installation, frontend build, database or hosted backend to configure.
 | **Choose your voice** | Load saved voices from ElevenLabs or paste a voice ID. |
 | **Keep a local library** | Name projects, add episode IDs, preview audio and revisit recent exports. |
 | **Recover a partial export** | Retry failed alignment using the saved WAV without generating speech again. |
+| **Build a conversation** | Give three speakers independent voices and settings; review messages and generate one WAV per turn. |
+| **Build After Effects timelines** | Export a JSX script with audio, word markers and optional subtitles; reuse static recordings across batch compositions. |
 
 The interface includes Multilingual v2, Flash v2.5 and Turbo v2.5 model options.
 Voice, model and format availability depend on your ElevenLabs account.
@@ -73,7 +75,8 @@ Keep the terminal open while working; press **Ctrl+C** to stop the app.
 4. **Choose an audio format.** Select 24 kHz or 44.1 kHz WAV.
 5. **Paste your script.** The app accepts up to 10,000 characters per generation;
    provider limits may be lower for a particular model.
-6. **Generate WAV + JSON.** Listen in the browser, download the files, or use
+6. **Choose a destination folder**, or enter its full path and select **Use path**.
+7. **Generate WAV + JSON.** Audio and timing JSON save to that folder. Listen in the browser, download the files, or use
    **Open outputs** to find them on disk.
 
 Generation makes a speech request followed by a forced-alignment request.
@@ -87,17 +90,205 @@ request.
 
 ## Your files
 
-Each generation gets its own folder under `outputs/`:
+### Multi-voice conversations
+
+1. Select **Multi voice**. Set the voice ID, model, delivery settings and audio
+   format independently in the **Voice 1**, **Voice 2** and **Voice 3** tabs.
+2. Paste the conversation. Unnumbered paragraphs separated by a **blank line**
+   alternate Voice 1 → Voice 2 → Voice 1. A single newline stays with the same
+   speaker. For explicit speakers, start each turn with `1.`, `2.` or `3.`:
+
+   ```text
+   1. Hi, how are you?
+   2. Good! Is Alex joining?
+   1. Yes, here he is.
+   3. Hello, everyone!
+   ```
+
+   Numbered turns can be on consecutive lines or separated by blank lines. Label
+   every turn when using numbers. The labels are removed from the spoken text.
+3. Select **Prepare speech** to review compact messages showing the number,
+   voice name and text. Click a message before generation to edit it. The script
+   folds away and the message list scrolls independently, keeping the timeline
+   and destination controls on screen. **Edit script** returns to the source.
+   Preparation is local and makes no ElevenLabs requests.
+4. **Choose a destination folder**, or enter an existing folder's full path and
+   select **Use path**. Generation is disabled until a folder is selected.
+5. Select **Generate messages**. Each turn generates separately, in order, using
+   its speaker's settings. WAV files are saved directly in the selected folder,
+   with names such as `voiceover_001_voice_1.wav`, `voiceover_002_voice_2.wav`.
+6. Use **Play all messages** below the messages to listen in order. The active
+   message is highlighted and scrolls into view. Click a message or timeline
+   segment to start there, or use the seek bar to choose a time.
+7. Hover or keyboard-focus a generated message to reveal its **regenerate** icon
+   and pencil icon. Regenerate replaces only that message's playback. Its new file gets a suffix such as
+   `_take_02.wav`; previous files are preserved. Current settings in the assigned
+   voice's tab apply to the new take. Failed timing can be retried separately.
+
+The batch continues while the local server is running, even if the browser tab
+closes. Reloading restores the latest generated conversation. Re-select the
+destination and enter the API key again after a reload before generating another
+take. Unsubmitted edits are not saved. The conversation limit is 10,000 characters
+and 200 messages. Only the voices used by your messages need valid voice IDs.
+
+Each message still makes a speech request and a forced-alignment request, with
+the same usage charges as single-voice generation. WAV files are copied to the
+selected folder; alignment JSON, transcripts and local playback copies remain in
+the app's history. No ZIP is created.
+
+### CSV batch mode
+
+Select **Batch**, choose a voice and import a UTF-8 CSV with **Choose CSV** (or
+paste the CSV). Three formats are supported:
+
+- **Custom columns:** `video_id,intro,narration,outro`, or your own speech column
+  names. Each row is a sequence; its speech columns play from left to right.
+  `video_id` and optional `script_revision` are metadata and are not spoken.
+
+- **Topics:** `video_id,topic,what_is_it,how_to_use_it,cake_explanation`. Each row
+  becomes four clips, in `topic`, `what`, `usage`, `cake` order. Additional columns
+  are allowed. This accepts the reference project's `topics.csv` and
+  `sheet_snapshot.csv` directly.
+- **Segments:** `video_id,segment_id,text`, with optional `script_revision`.
+  Each row is one clip. This accepts the reference project's `vo_segments.csv`.
+
+Examples: [topics CSV](examples/batch_topics.csv) and
+[segments CSV](examples/batch_segments.csv). Quoted commas, multiline text and
+UTF-8 BOMs are supported. IDs use letters, numbers, underscores or hyphens;
+unsafe filenames, empty text and duplicate video/segment pairs are rejected.
+The batch limit is 1,000 clips and 500,000 spoken characters, with at most 10,000
+characters in any one clip. A 100-video topics CSV produces 400 clips.
+
+After importing, select **Static columns** in the app. Each selected column is
+generated once per batch and its recording is reused in every sequence preview.
+Repeat identical text in that column, or enter it in one row and leave the rest
+blank. Conflicting texts are rejected before generation. In segment-format CSVs,
+the choices correspond to segment IDs and reuse applies wherever that segment occurs.
+
+Five-row examples:
+
+| CSV | Select as static | Recordings generated |
+| --- | --- | --- |
+| [Shared intro](examples/batch_shared_intro.csv) | `intro` | 6 |
+| [Shared outro](examples/batch_shared_outro.csv) | `outro` | 6 |
+| [Shared intro and outro](examples/batch_shared_intro_outro.csv) | `intro`, `outro` | 7 |
+
+**Prepare batch** shows the sequence, message and recording counts. Review
+or edit the messages, choose a destination folder, then generate. The selected
+folder becomes the batch root, using the reference project's candidate/pass
+structure with this app's WAV audio:
+
+```text
+<chosen folder>/
+├── scripts/VIDEO_001/VIDEO_001_topic.txt
+└── audio/candidates/
+    ├── pass_01_initial/VIDEO_001/
+    │   ├── VIDEO_001_topic.wav
+    │   ├── VIDEO_001_topic.txt
+    │   ├── VIDEO_001_topic.alignment.json
+    │   ├── VIDEO_001_topic.words.tsv
+    │   └── VIDEO_001_topic.candidate.json
+    └── pass_02_retry/VIDEO_001/
+        └── VIDEO_001_topic.wav  (+ the new take's sidecars)
+```
+
+Each regenerated clip uses the next available pass, preserving earlier files.
+Static recordings are stored once at `audio/shared/pass_01_initial/<column>.wav`,
+with the same timing and candidate sidecars; shared script copies are stored in
+`scripts/shared/`. Shared candidate metadata lists the sequences using the clip.
+Regenerating a static message creates one new take and updates every sequence
+that uses it. Editing its text likewise updates all its occurrences.
+The root `scripts/` copy preserves the initial text; the text beside each
+candidate records what that take actually says. Candidate metadata includes
+voice settings, revision and attempt, but no API key. Candidates are marked
+`REVIEW_PENDING`; the app does not automatically approve them or copy them into
+an approved-assets folder. This mode implements CSV preparation, generation,
+playback and individual retries; it does not run the reference project's ASR or
+manual approval commands.
+
+The optional **Omit the opening “Let's explain it with cake.”** checkbox removes
+only that leading phrase from cake segments, for projects that use a prerecorded
+hook. It is off by default. No pronunciation substitutions run automatically.
+
+Use **Preview** to choose one sequence or listen to all sequences in order.
+The same timeline and hover controls work in Batch mode. Multi voice and Batch
+keep separate voice settings and restore their own latest generated sessions.
+
+### After Effects compositions
+
+After generating, choose **Resolution**, **Subtitles** and **Frame rate** beside
+**Create an After Effects Composition**. Defaults are **1080 × 1920 vertical**,
+**Words**, and **30 fps**. Landscape and square presets are also available.
+Subtitles can show individual **Words**, short **Phrases**, or be **Off**.
+Every option includes word markers on the audio layers, so audio and valid word
+timings are required even with subtitles off. Retry missing alignment first.
+
+Click the button to save a `.jsx` script in the selected destination folder.
+The result also offers **Download JSX**. Existing scripts are preserved with
+numbered filenames. Exporting uses saved recordings and makes no ElevenLabs
+requests. To use an older recording, choose **Recent exports → Use**; it opens
+as a single voiceover. Multi voice and Batch export their current generated session.
+
+In After Effects, select **File → Scripts → Run Script File**, choose the JSX,
+then save your project. The script creates a new VO Studio folder in the current
+project with imported audio and these compositions:
+
+| Mode | Composition contents |
+| --- | --- |
+| One voice | One composition with the chosen recording, word markers and optional subtitles. |
+| Multi voice | One composition with messages in playback order, distinct speaker label colors, and matching speaker identities in colored subtitles. |
+| Batch | One composition per `video_id`, with its clips in CSV order. A 100-video batch creates 100 compositions. Shared/static recordings are imported once and reused. |
+
+The Batch preview selection does not limit the export: all sequences are included.
+Segment-format CSV rows with the same `video_id` share one composition. Active
+takes follow playback; if a new take failed before producing audio, the previous
+playable take is used with its original timings and speaker. Regenerate edited
+messages before exporting. A partial batch with missing audio or timing is blocked.
+
+Audio uses the WAV's exact duration; subtitles use frame boundaries and editable
+Source Text keyframes. Very fast words sharing a frame are displayed together.
+Phrases split at punctuation, pauses, six words or approximately 42 characters.
+All subtitle text is uppercase and centered in the composition, with an anchor
+point that stays in the middle of the visible text as captions change.
+Subtitle text is white in One voice and Batch, and colored by speaker in Multi
+voice. Timeline label colors use After Effects' label presets and can look
+different if those preferences have been customized.
+
+The script references WAV files rather than embedding them. Keep those files
+available. References prefer the original exported take, with local history as
+a fallback. WAV paths inside the script's destination folder are also stored
+relative to the script, so you can move that folder together. Missing audio is
+reported before the script changes the project. No additional Python packages,
+Node.js runtime, or After Effects extension is needed; Python writes the
+[ExtendScript file that After Effects runs](https://helpx.adobe.com/after-effects/desktop/automate-in-after-effects/automate-animation/scripts.html).
+
+### Local history
+
+New recordings are grouped by project, episode, and recording/voice, with numbered
+takes under `outputs/recordings/`:
 
 ```text
 outputs/
-└── <job-id>/
-    ├── documentary_ep-01.wav
-    ├── documentary_ep-01_alignment.json
-    ├── transcript.txt
-    ├── metadata.json
-    └── metadata_internal.json
+└── recordings/
+    └── Documentary/
+        └── Episode 01/
+            └── Voiceover - Narrator/
+                ├── Take 01/
+                │   ├── documentary_01.wav
+                │   ├── documentary_01_alignment.json
+                │   ├── transcript.txt
+                │   ├── metadata.json
+                │   └── metadata_internal.json
+                └── Take 02/
 ```
+
+Multi-voice folders include the message number and speaker, such as
+`Message 002 - Voice 2 - Narrator`. Batch folders use the video and segment names;
+reused clips use `Shared - intro - Narrator`. Projects without an episode use
+`No episode`. Repeated generations get the next available take number, so earlier
+files remain intact. Existing ID-named folders stay where they are to preserve
+audio links in After Effects; history, playback, retries and exports read both
+layouts. Files in your selected destination keep their existing export structure.
 
 The filename comes from the project name and optional ID. The JSON preserves
 ElevenLabs' alignment response, including `words` and `characters` with timing
@@ -114,7 +305,8 @@ by Git.
 - **Credentials:** used in memory; excluded from preferences and job metadata.
   Submitted keys and known local paths are redacted from error messages.
 - **Browser preferences:** project name, episode ID, voice and synthesis settings
-  are remembered. The API key and draft script are excluded.
+  for all profiles are remembered, along with the latest Multi voice and Batch
+  session identifiers. The API key and draft script are excluded.
 - **Local files:** submitted scripts, generated audio, alignment and metadata are
   saved unencrypted in `outputs/` for history and retries.
 - **External processing:** ElevenLabs receives your script for speech generation
@@ -138,10 +330,17 @@ flowchart LR
 ```
 
 The backend uses Python's `ThreadingHTTPServer`. The frontend is plain HTML, CSS
-and JavaScript. One generation or alignment retry runs at a time.
+and JavaScript. One generation, conversation batch or alignment retry runs at a
+time. Conversation jobs run sequentially; individual messages can be retried.
 
 ```text
 server.py                 Local HTTP server, ElevenLabs requests and export jobs
+conversation.py           Speaker parsing, destination selection and safe exports
+production.py             CSV preparation and per-video candidate exports
+after_effects.py           Audio/timing validation and After Effects export data
+recordings.py              Readable local recording folders and legacy lookup
+templates/after_effects.jsx  After Effects composition builder
+static/playback.js        Ordered playback and timeline position handling
 static/                   Browser interface, styles and JavaScript
 tests/test_app.py         Offline tests with mocked provider responses
 docs/                     Interface preview and privacy documentation
@@ -158,14 +357,17 @@ Run the tests without an API key or paid requests:
 python3 -m unittest discover -s tests -v
 ```
 
-The suite checks WAV output, alignment retries, input validation, credential
-redaction and local HTTP behavior. It uses a temporary localhost port and temporary
+The suite checks WAV output, speaker parsing, independent voice settings, ordered
+exports, regeneration, alignment retries, input validation, credential redaction
+and local HTTP behavior. It uses a temporary localhost port and temporary
 output files. GitHub Actions runs it on Linux, macOS and Windows.
 
 If Node.js is installed, check the browser script with:
 
 ```sh
 node --check static/app.js
+node --check static/playback.js
+node --test tests/test_playback.js tests/test_export_ui.js
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow.

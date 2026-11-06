@@ -1,0 +1,5 @@
+video_id,segment_id,text,script_revision
+VIDEO_001,topic,First topic,r1
+VIDEO_001,what,A short explanation.,r1
+VIDEO_001,usage,A practical example.,r1
+VIDEO_001,cake,A simple cake analogy.,r1

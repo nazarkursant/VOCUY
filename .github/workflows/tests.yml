@@ -36,3 +36,5 @@ jobs:
         with:
           node-version: '22'
       - run: node --check static/app.js
+      - run: node --check static/playback.js
+      - run: node --test tests/test_playback.js tests/test_export_ui.js
