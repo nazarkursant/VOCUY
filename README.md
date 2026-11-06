@@ -17,7 +17,7 @@ word-level timing and ready-made After Effects compositions.
 
 </div>
 
-![VOCUY's dark interface with voice controls, narration editor and WAV export](docs/preview.jpg)
+![VOCUY in Multi voice mode, with voice controls, conversation script and After Effects export](docs/preview.jpg)
 
 VOCUY brings script entry, voice controls, audio playback and alignment exports
 into one browser window. The app runs on your computer with **Python alone**: no
