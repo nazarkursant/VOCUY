@@ -46,12 +46,17 @@ candidates, timing files and settings metadata to the chosen folder. Only the
 speech text, voice and synthesis settings are sent for synthesis. The API key is
 excluded from CSV exports, candidate metadata and preferences.
 
-After Effects exports run locally without provider requests. Composition settings
-(resolution, subtitles and frame rate) are remembered in browser preferences.
-The `.jsx` script contains project/voice names, spoken words, timing and local WAV
-paths, but no API key. It is saved in the chosen folder and cached under
-`outputs/after_effects/` for downloading. Audio is referenced, not embedded or
-uploaded. Running the script imports the referenced files into After Effects.
+After Effects, Premiere Pro and DaVinci Resolve exports run locally without
+provider requests. Export settings (editor, resolution, subtitles and frame rate)
+are remembered in browser preferences. The `.jsx`, `.xml` or `.py` export and any
+`.srt` subtitle files contain project/voice names, spoken words, timing and local
+WAV paths, but no API key. They are saved in the chosen folder, and the main file
+is cached under `outputs/exports/` for downloading. Audio is referenced, not embedded or
+uploaded. Running or importing the export brings the referenced files into the editor.
+
+Lip-sync exports work the same way and also reference the chosen mouth images by
+local path. Mouth folder choices stay in server memory for the session and are
+not saved in preferences. The `mouth_map.csv` table is read, never written.
 
 ## Local safeguards
 

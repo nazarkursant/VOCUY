@@ -1,0 +1,17 @@
+shape,sounds,poses,notes
+rest,Silence and pauses between words,01,Closed neutral
+mbp,"M, B, P",01,Lips closed; same image as rest
+fv,"F, V, PH",11,Lower lip under upper teeth
+th,TH,12,Tongue visible
+l,L,12,Tongue raised
+ee,"EE, EA, IE, Y",06 08,Smile with teeth; narrow teeth for variety
+eh,"E, I (short vowels), AI, AY",07 02,Teeth apart or slightly open
+ah,A,04 03,Medium open; shallow for variety
+wide,A held 0.2 s or longer,05 04,Tallest opening for stressed vowels
+uh,U as in but,03 02,Shallow open
+oh,"O, OW, OA, AW, AU, OI",09,Rounded O
+oo,"OO, OU, EW, U as in you, W, WH, QU",10,Rounded narrow
+r,"R, ER as in work",10,Rounded; stays put after W or OO
+sz,"S, Z, X, soft C",08 06,Teeth close together
+ch,"CH, SH, J, soft G",08 10,Teeth with rounded lips
+tdn,"T, D, N, K, G, H, NG and other letters",02 07 03,Relaxed open transition

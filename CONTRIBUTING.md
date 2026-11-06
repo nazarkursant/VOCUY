@@ -24,7 +24,9 @@ node --test tests/test_playback.js tests/test_export_ui.js
 Node.js is optional for development; it is only used here to check JavaScript
 syntax. The Python tests fake ElevenLabs responses and use temporary files.
 The export checks also execute generated JSX against an After Effects API test
-double when Node.js is available; they do not replace a smoke test in After Effects.
+double when Node.js is available, parse the Premiere Pro XML, and run the DaVinci
+Resolve script against a fake Resolve API. They do not replace smoke tests in
+After Effects, Premiere Pro and DaVinci Resolve.
 They need permission to open a temporary localhost port, but no API key or
 internet access. GitHub Actions runs the same checks.
 

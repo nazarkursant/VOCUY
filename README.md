@@ -38,7 +38,8 @@ package installation, frontend build, database or hosted backend to configure.
 | **Keep a local library** | Name projects, add episode IDs, preview audio and revisit recent exports. |
 | **Recover a partial export** | Retry failed alignment using the saved WAV without generating speech again. |
 | **Build a conversation** | Give three speakers independent voices and settings; review messages and generate one WAV per turn. |
-| **Build After Effects timelines** | Export a JSX script with audio, word markers and optional subtitles; reuse static recordings across batch compositions. |
+| **Build editor timelines** | Export to After Effects (JSX), Premiere Pro (XML) or DaVinci Resolve (Python) with audio, word markers and optional subtitles; reuse static recordings across batch sequences. |
+| **Animate talking mouths** | Switch mouth images in time with each voice in After Effects, driven by an editable sound-to-mouth table. |
 
 The interface includes Multilingual v2, Flash v2.5 and Turbo v2.5 model options.
 Voice, model and format availability depend on your ElevenLabs account.
@@ -269,6 +270,100 @@ reported before the script changes the project. No additional Python packages,
 Node.js runtime, or After Effects extension is needed; Python writes the
 [ExtendScript file that After Effects runs](https://helpx.adobe.com/after-effects/desktop/automate-in-after-effects/automate-animation/scripts.html).
 
+### Lip-sync mouths in After Effects
+
+Open **Lip sync · After Effects** at the bottom of the export panel to make a
+talking mouth from still images. This is a separate script from the main export:
+run both if you also want subtitles and word markers.
+
+1. Choose a folder of mouth images for **Voice 1**. In Multi voice, Voices 2 and
+   3 can use their own folders, or leave them empty to share Voice 1's mouths.
+2. Choose **Create lip-sync composition**. It uses the resolution and frame rate
+   selected above, plus the saved audio and character timings, so it costs no credits.
+3. In After Effects, run the `_lipsync.jsx` file with **File → Scripts → Run Script File**.
+
+Each voice gets a null named `Voice N - … - Mouth control`. Its mouth layer and
+its audio clips are parented to it, so moving or scaling the null moves that
+character's mouth. The null's **Mouth pose** slider holds the image number for
+each frame; edit those hold keyframes to retime or replace any pose. Every mouth
+folder becomes a `Mouth poses` precomp in which image N sits on frame N − 1.
+
+#### The mouth table (`mouth_map.csv`)
+
+Put a `mouth_map.csv` in the mouth folder to say which images show each mouth
+shape. Open it in Excel, Numbers or Google Sheets. List several images in the
+`poses` cell (separated by spaces) to rotate between them for variety. Name
+images by number (`14`), file name (`mouth_14_lower_lip_tucked_upper_teeth.png`)
+or name without extension. Only images in the table are used, so a reference
+sheet in the same folder is ignored. Only the `rest` row is required: a missing
+shape borrows a similar one, for example `oo` → `oh` → `ah` → `rest`.
+
+| Shape | Sounds | Clay pack poses |
+| --- | --- | --- |
+| `rest` | Silence, pauses of 0.15 s or more | 01 |
+| `mbp` | M, B, P | 01 |
+| `fv` | F, V, PH | 11 |
+| `th` | TH | 12 |
+| `l` | L | 12 |
+| `ee` | EE, EA, IE, Y | 06, 08 |
+| `eh` | E, I, AI, AY | 07, 02 |
+| `ah` | A | 04, 03 |
+| `wide` | A held 0.2 s or longer | 05, 04 |
+| `uh` | U as in *but* | 03, 02 |
+| `oh` | O, OW, OA, AW, AU, OI | 09 |
+| `oo` | OO, OU, EW, W, WH, QU | 10 |
+| `r` | R, ER as in *work* | 10 |
+| `sz` | S, Z, X, soft C | 08, 06 |
+| `ch` | CH, SH, J, soft G | 08, 10 |
+| `tdn` | T, D, N, K, G, H, NG and other letters | 02, 07, 03 |
+
+The included `Clay_Mouth_Poses_12_Transparent_512` folder has this table and a
+pose spec in its `README.md`. Its poses share one upper-lip line, so only the
+jaw moves between images. A folder without a table but with 20 images numbered
+in the original `mouth_01…mouth_20` order uses a built-in 20-pose table.
+
+English words are looked up in the bundled [CMU Pronouncing
+Dictionary](https://github.com/cmusphinx/cmudict) (126,000 words, including many
+names), so *Friday* opens on "FRAI" and *time* moves through AH → EE. Other
+words, such as names, transliterations and Cyrillic text, are read from the
+spelling with continental vowels (*i* as EE, *u* as OO). Sounds are spread over
+each word's ElevenLabs timestamps. This is a visual approximation, not phoneme
+recognition from the audio. Shapes appear one frame before their sound, change at most
+about 12 times per second (every 2 frames at 24–30 fps), and lip closures for
+M/B/P are kept when sounds crowd together. The script references the images
+rather than embedding them; keep the mouth folder available.
+
+### Premiere Pro and DaVinci Resolve
+
+Choose **Editor → Premiere Pro** or **DaVinci Resolve** above the export settings.
+Both use the same resolution, frame rate, subtitle and word-marker data as
+After Effects. In Multi voice, each speaker gets its own audio track (A1–A3).
+Batch mode creates one sequence or timeline per `video_id`, and shared recordings
+are imported once. Both editors place clips on whole frames. Back-to-back clips
+may lose less than one frame of trailing silence.
+
+With subtitles on, one `.srt` file per sequence is saved in a
+`…_subtitles` folder next to the export. Keep that folder with the WAV files.
+
+**Premiere Pro** — the export is a Final Cut Pro 7 XML file
+(`…_premiere.xml`). In Premiere, choose **File → Import** and select the XML.
+It creates a bin with sequences at the chosen size and frame rate. Each audio
+clip has one marker per word and a speaker label color. Premiere does not read
+captions from XML. Import each SRT and drag it onto its sequence at `00:00`.
+
+**DaVinci Resolve 18+** — the export is a Python script (`…_resolve.py`).
+Open a project, then choose **Workspace → Console → Py3** and enter the
+`exec(open(r'…', encoding='utf-8').read())` line shown after export.
+You can also copy the script into Resolve's `Fusion/Scripts/Edit` folder and run it
+from **Workspace → Scripts**. Resolve needs a Python 3 install for its scripting.
+The script adds a VOCUY bin with audio, timelines and subtitles. Each clip has
+word markers and speaker colors. The script imports each SRT and places it on a
+subtitle track. If that version of Resolve can't place it at the right time, the
+script prints a message; drag the SRT from the Subtitles bin to the timeline start.
+Resolve can only change a project's frame rate before its first timeline. If an
+existing project uses a different rate, the script stops without changes. Use a
+new project or export at the project's rate. Messages appear in the Console.
+
 ### Local history
 
 New recordings are grouped by project, episode, and recording/voice, with numbered
@@ -345,8 +440,13 @@ server.py                 Local HTTP server, ElevenLabs requests and export jobs
 conversation.py           Speaker parsing, destination selection and safe exports
 production.py             CSV preparation and per-video candidate exports
 after_effects.py           Audio/timing validation and After Effects export data
+editors.py                 Premiere Pro XML, DaVinci Resolve script and SRT export
 recordings.py              Readable local recording folders and legacy lookup
 templates/after_effects.jsx  After Effects composition builder
+lipsync.py                 Mouth tables, sound-to-shape rules and lip-sync keys
+data/cmudict.txt.gz        CMU Pronouncing Dictionary (BSD-style license in data/)
+templates/lip_sync.jsx     After Effects lip-sync builder (nulls, mouths, audio)
+templates/davinci_resolve.py DaVinci Resolve timeline builder
 static/playback.js        Ordered playback and timeline position handling
 static/                   Browser interface, styles and JavaScript
 tests/test_app.py         Offline tests with mocked provider responses

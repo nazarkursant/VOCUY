@@ -105,6 +105,8 @@ def load_recording(output_dir, job, destination):
         source = directory / (stem + '.wav')
         with wave.open(str(source), 'rb') as audio:
             duration = audio.getnframes() / audio.getframerate()
+            audio_format = {'sample_rate': audio.getframerate(), 'channels': audio.getnchannels(),
+                            'sample_width': audio.getsampwidth()}
         if duration <= 0:
             raise ValueError('Empty recording.')
         alignment = json.loads((directory / (stem + '_alignment.json')).read_text('utf8'))
@@ -133,10 +135,11 @@ def load_recording(output_dir, job, destination):
     except ValueError:
         relative = None
     return {'id': job['id'], 'name': selected.name, 'path': str(selected),
-            'relative_path': relative, 'duration': duration, 'words': words}
+            'relative_path': relative, 'duration': duration, 'words': words, **audio_format}
 
 
-def build_manifest(name, mode, turns, output_dir, destination, settings):
+def build_manifest(name, mode, turns, output_dir, destination, settings,
+                   container='An After Effects composition'):
     settings = validate_settings(settings)
     if mode not in ('single', 'multi', 'batch') or not turns:
         raise ValueError('Choose a generated voiceover, conversation, or batch.')
@@ -171,11 +174,11 @@ def build_manifest(name, mode, turns, output_dir, destination, settings):
                                                  start, asset['duration'], settings['fps'])})
         comp['duration'] += asset['duration']
         if comp['duration'] > 10800:
-            raise ValueError('An After Effects composition cannot exceed three hours. Split this sequence.')
+            raise ValueError(f'{container} cannot exceed three hours. Split this sequence.')
     for comp in compositions.values():
         comp['duration'] = math.ceil(comp['duration'] * settings['fps'] - 1e-8) / settings['fps']
         if comp['duration'] > 10800:
-            raise ValueError('An After Effects composition cannot exceed three hours. Split this sequence.')
+            raise ValueError(f'{container} cannot exceed three hours. Split this sequence.')
     return {'name': name, 'mode': mode, 'settings': settings,
             'assets': assets, 'compositions': list(compositions.values())}
 

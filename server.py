@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -22,6 +23,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import conversation
 import production
 import after_effects
+import editors
+import lipsync
 import recordings
 
 APP_DIR = Path(__file__).resolve().parent
@@ -495,9 +498,54 @@ def start_batch(request, batch_id=None):
     return batch['id']
 
 
-def export_after_effects(request):
+EXPORT_TARGETS = {
+    'after_effects': {'suffix': '_after_effects', 'ext': '.jsx', 'container': 'An After Effects composition'},
+    'premiere': {'suffix': '_premiere', 'ext': '.xml', 'container': 'A Premiere Pro sequence'},
+    'resolve': {'suffix': '_resolve', 'ext': '.py', 'container': 'A DaVinci Resolve timeline'},
+    'lip_sync': {'suffix': '_lipsync', 'ext': '.jsx', 'container': 'An After Effects composition'},
+}
+
+
+def write_subtitles(manifest, folder, destination):
+    """Write one SRT per sequence with captions; returns {composition index: paths}."""
+    written, used = {}, set()
+    for index, composition in enumerate(manifest['compositions']):
+        text = editors.srt(composition)
+        if not text:
+            continue
+        name = slugify(composition['name'], 'sequence')
+        if len(manifest['compositions']) > 1:
+            name = f'{index + 1:03d}_{name}'
+        while name in used:
+            name += '_'
+        used.add(name)
+        target = folder / (name + '.srt')
+        target.write_text(text, encoding='utf8')
+        written[index] = {'path': str(target.resolve()),
+                          'relative_path': target.relative_to(destination).as_posix()}
+    return written
+
+
+def render_export(target, manifest, subtitles):
+    if target == 'after_effects':
+        return after_effects.render_script(manifest)
+    if target == 'lip_sync':
+        return lipsync.render_script(manifest)
+    if target == 'premiere':
+        return editors.premiere_xml(manifest)
+    return editors.resolve_script(manifest, subtitles)
+
+
+def export_timeline(request, target=None):
+    target = target or request.get('target') or 'after_effects'
+    if target not in EXPORT_TARGETS:
+        raise ApiError(400, 'Choose After Effects, Premiere Pro, or DaVinci Resolve.')
+    spec = EXPORT_TARGETS[target]
     destination = conversation.destination_for(request.get('destination_token'))
-    settings = after_effects.validate_settings(request.get('settings', {}))
+    raw_settings = request.get('settings', {})
+    if target == 'lip_sync' and isinstance(raw_settings, dict):
+        raw_settings = {**raw_settings, 'subtitles': 'off'}  # Captions belong to the main export.
+    settings = after_effects.validate_settings(raw_settings)
     job_id, batch_id = request.get('job_id'), request.get('batch_id')
     identifier = job_id or batch_id
     if bool(job_id) == bool(batch_id) or not isinstance(identifier, str) or not re.fullmatch(r'[a-f0-9]{32}', identifier):
@@ -519,31 +567,61 @@ def export_after_effects(request):
             name, episode = batch['name'], batch.get('episode_id') or ''
             mode, turns = batch.get('mode', 'multi'), batch['turns']
         title = name + (' · ' + episode if episode else '')
-        manifest = after_effects.build_manifest(title, mode, turns, OUTPUT_DIR, destination, settings)
-        script = after_effects.render_script(manifest)
-        export_id = uuid.uuid4().hex
-        cache = production.safe_directory(OUTPUT_DIR, 'after_effects') / (export_id + '.jsx')
-        cache.write_text(script, encoding='utf8')
-        stem = slugify(name) + ('_' + slugify(episode) if episode else '') + '_after_effects'
+        manifest = after_effects.build_manifest(title, mode, turns, OUTPUT_DIR, destination, settings,
+                                                container=spec['container'])
+        if target == 'lip_sync':
+            manifest = lipsync.build_manifest(manifest, OUTPUT_DIR, destination, request.get('mouths'))
+        # Premiere and Resolve read captions from SRT files saved beside the export.
+        captions = target in ('premiere', 'resolve') and any(c['cues'] for comp in manifest['compositions']
+                                                      for c in comp['clips'])
+        stem = slugify(name) + ('_' + slugify(episode) if episode else '') + spec['suffix']
+        main = subtitle_dir = None
         try:
             for take in range(1, 10001):
-                filename = stem + (f'_{take:02d}' if take > 1 else '') + '.jsx'
+                base = stem + (f'_{take:02d}' if take > 1 else '')
                 try:
-                    with (destination / filename).open('x', encoding='utf8') as out:
-                        out.write(script)
-                    break
+                    # Reserve the filename and the subtitle folder without replacing older exports.
+                    (destination / (base + spec['ext'])).open('x').close()
                 except FileExistsError:
                     continue
+                main = destination / (base + spec['ext'])
+                if captions:
+                    try:
+                        (destination / (base + '_subtitles')).mkdir()
+                    except FileExistsError:
+                        main.unlink()
+                        main = None
+                        continue
+                    subtitle_dir = destination / (base + '_subtitles')
+                break
             else:
                 raise OSError('Too many exports.')
+            subtitles = write_subtitles(manifest, subtitle_dir, destination) if subtitle_dir else {}
+            script = render_export(target, manifest, subtitles)
+            main.write_text(script, encoding='utf8')
         except OSError:
-            cache.unlink(missing_ok=True)
-            raise ApiError(400, 'Could not save the script. Choose a writable destination folder and try again.') from None
-        return {'filename': filename, 'compositions': len(manifest['compositions']),
-                'recordings': len(manifest['assets']),
-                'download_url': f'/api/after-effects/{export_id}/{filename}'}
+            if main:
+                main.unlink(missing_ok=True)
+            if subtitle_dir:
+                shutil.rmtree(subtitle_dir, ignore_errors=True)
+            raise ApiError(400, 'Could not save the export. Choose a writable destination folder and try again.') from None
+        export_id = uuid.uuid4().hex
+        try:
+            cache = production.safe_directory(OUTPUT_DIR, 'exports') / (export_id + spec['ext'])
+            cache.write_text(script, encoding='utf8')
+            download_url = f'/api/exports/{export_id}/{main.name}'
+        except OSError:
+            download_url = ''
+        return {'target': target, 'filename': main.name, 'path': str(main.resolve()),
+                'subtitles_folder': subtitle_dir.name if subtitle_dir else '',
+                'subtitles': len(subtitles), 'compositions': len(manifest['compositions']),
+                'recordings': len(manifest['assets']), 'download_url': download_url}
     finally:
         GENERATE_LOCK.release()
+
+
+def export_after_effects(request):
+    return export_timeline(request, 'after_effects')
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -613,10 +691,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({'ok':True})
         if path == '/api/history':
             return self._json({'items':load_history()})
-        match = re.fullmatch(r'/api/after-effects/([a-f0-9]{32})/([a-z0-9_-]+\.jsx)', path)
+        match = re.fullmatch(r'/api/exports/([a-f0-9]{32})/([a-z0-9_-]+(\.jsx|\.xml|\.py))', path)
         if match:
             try:
-                script = (OUTPUT_DIR / 'after_effects' / (match.group(1) + '.jsx')).read_bytes()
+                script = (OUTPUT_DIR / 'exports' / (match.group(1) + match.group(3))).read_bytes()
             except OSError:
                 return self._json({'error': 'Export not found.'}, 404)
             return self._send(200, script, 'application/octet-stream', match.group(2))
@@ -691,6 +769,17 @@ class Handler(BaseHTTPRequestHandler):
             path = urllib.parse.urlsplit(self.path).path
             if path == '/api/after-effects':
                 return self._json(export_after_effects(request))
+            if path == '/api/export':
+                if request.get('target') == 'lip_sync':
+                    raise ApiError(400, 'Choose After Effects, Premiere Pro, or DaVinci Resolve.')
+                return self._json(export_timeline(request))
+            if path == '/api/lip-sync':
+                return self._json(export_timeline(request, 'lip_sync'))
+            if path == '/api/mouth-folder':
+                if request.get('path'):
+                    return self._json({'mouths': lipsync.register_folder(request['path'])})
+                chosen = conversation.pick_folder('Choose a folder of mouth images')
+                return self._json({'mouths': lipsync.register_folder(chosen) if chosen else None})
             if path == '/api/inspect-csv':
                 return self._json(production.inspect_csv(request.get('text')))
             if path == '/api/prepare-csv':

@@ -36,6 +36,10 @@ let selectedSequence = '';
 let singleExportJob = null;
 let aeExporting = false;
 let aeExportSignature = '';
+const mouthFolders = [null, null, null];
+let mouthBusy = false;
+let lipSyncExporting = false;
+let lipSyncSignature = '';
 
 const defaults = {stability:.5, similarity:.75, style:0, speed:1, boost:true};
 
@@ -83,7 +87,7 @@ function savePrefs() {
     voiceId:$('voiceId').value, voiceName, modelId:$('modelId').value,
     mode, singleProfile, batchProfile, voiceProfiles,
     batchIds:{multi:workspaces.multi.id,batch:workspaces.batch.id},
-    afterEffects:{resolution:$('aeResolution').value,subtitles:$('aeSubtitles').value,fps:$('aeFps').value},
+    afterEffects:{target:$('exportTarget').value,resolution:$('aeResolution').value,subtitles:$('aeSubtitles').value,fps:$('aeFps').value},
     sampleRate:document.querySelector('[name="quality"]:checked').value, ...{
       stability:$('stability').value, similarity:$('similarity').value,
       style:$('style').value, speed:$('speed').value, boost:$('boost').checked
@@ -107,7 +111,7 @@ function loadPrefs() {
       if (data[id] !== undefined && Number(data[id]) >= Number(slider.min) && Number(data[id]) <= Number(slider.max)) slider.value = data[id];
     }
     if (typeof data.boost === 'boolean') $('boost').checked = data.boost;
-    for (const [id,key] of [['aeResolution','resolution'],['aeSubtitles','subtitles'],['aeFps','fps']]) {
+    for (const [id,key] of [['exportTarget','target'],['aeResolution','resolution'],['aeSubtitles','subtitles'],['aeFps','fps']]) {
       const value=data.afterEffects?.[key];
       if ([...$(id).options].some(o=>o.value===value)) $(id).value=value;
     }
@@ -327,7 +331,12 @@ function init() {
   $('refreshHistory').addEventListener('click',loadHistory);
   $('openFolderBtn').addEventListener('click',openFolder);
   $('createAeBtn').addEventListener('click',createAfterEffects);
-  ['aeResolution','aeSubtitles','aeFps'].forEach(id=>$(id).addEventListener('change',()=>{savePrefs();syncAfterEffectsControls();}));
+  $('createLipSyncBtn').addEventListener('click',createLipSync);
+  for(const n of [1,2,3]){
+    $('chooseMouth'+n).addEventListener('click',()=>chooseMouths(n));
+    $('useMouth'+n).addEventListener('click',()=>chooseMouths(n,true));
+  }
+  ['exportTarget','aeResolution','aeSubtitles','aeFps'].forEach(id=>$(id).addEventListener('change',()=>{savePrefs();syncAfterEffectsControls();}));
   loadHistory();
 }
 
@@ -398,7 +407,7 @@ function setMode(next) {
 }
 function syncConversationControls() {
   const stale=Boolean(conversationTurns.length&&preparedSource!==$('scriptText').value);
-  const locked=busy||preparing||aeExporting;
+  const locked=busy||preparing||aeExporting||lipSyncExporting;
   $('scriptPanel').hidden=mode!=='single'&&conversationTurns.length>0&&!editingScript;
   $('conversationPanel').hidden=mode==='single'||!conversationTurns.length||editingScript;
   $('scriptChanged').hidden=!stale;
@@ -424,33 +433,109 @@ function syncConversationControls() {
   syncAfterEffectsControls();
 }
 
-function syncAfterEffectsControls() {
+function exportState() {
   const jobs=mode==='single'?(singleExportJob?[singleExportJob]:[]):conversationTurns.map(playableJob);
   const generated=mode==='single'?Boolean(singleExportJob):Boolean(batchId&&conversationTurns.length);
   const dirty=mode!=='single'&&(conversationTurns.some(t=>t.dirty)||preparedSource!==$('scriptText').value);
   const ready=generated&&jobs.length>0&&jobs.every(j=>j?.has_wav&&j.has_alignment&&j.word_count!==0&&j.status!=='working');
-  $('createAeBtn').disabled=busy||preparing||folderBusy||aeExporting||!destination||!ready||dirty;
-  $('createAeBtn').textContent=aeExporting?'Creating After Effects script…':'Create an After Effects Composition';
-  ['aeResolution','aeSubtitles','aeFps'].forEach(id=>$(id).disabled=aeExporting);
+  return {jobs,dirty,ready};
+}
+function syncAfterEffectsControls() {
+  const {jobs,dirty,ready}=exportState();
+  $('createAeBtn').disabled=busy||preparing||folderBusy||aeExporting||lipSyncExporting||!destination||!ready||dirty;
+  const target=exportTarget();
+  $('createAeBtn').textContent=aeExporting?`Creating ${target.app} ${target.file}…`:target.button;
+  ['exportTarget','aeResolution','aeSubtitles','aeFps'].forEach(id=>$(id).disabled=aeExporting);
   $('aeHint').textContent=aeExporting?'Saving the script to your destination folder…':busy?'Wait for audio and word timings to finish.':
     dirty?'Generate your edited messages before exporting.':!ready?'Generate audio and word timings to export. Word markers are included with subtitles Off.':
-    !destination?'Choose a destination folder for the script.':mode==='batch'?
-    `${new Set(conversationTurns.map(t=>t.video_id)).size} compositions · all sequences · shared recordings reused · word markers included.`:
-    'One composition · word markers included · uses saved audio, no credits.';
-  const signature=JSON.stringify([mode,batchId,jobs.map(j=>j?.id),destination?.token,dirty,$('aeResolution').value,$('aeSubtitles').value,$('aeFps').value]);
+    !destination?`Choose a destination folder for the ${target.file}.`:mode==='batch'?
+    `${new Set(conversationTurns.map(t=>t.video_id)).size} ${target.items} · all sequences · shared recordings reused · word markers included.`:
+    `One ${target.item} · word markers included · uses saved audio, no credits.`;
+  const signature=JSON.stringify([mode,batchId,jobs.map(j=>j?.id),destination?.token,dirty,target.id,$('aeResolution').value,$('aeSubtitles').value,$('aeFps').value]);
   if(signature!==aeExportSignature){$('aeResult').hidden=true;aeExportSignature=signature;}
+  syncLipSyncControls();
+}
+
+function lipSyncVoices() {return mode==='multi'?[1,2,3]:[1];}
+function syncLipSyncControls() {
+  const {jobs,dirty,ready}=exportState();
+  const working=busy||preparing||folderBusy||mouthBusy||aeExporting||lipSyncExporting;
+  for(const n of [1,2,3]){
+    $('mouthRow'+n).hidden=!lipSyncVoices().includes(n);
+    $('chooseMouth'+n).disabled=$('useMouth'+n).disabled=$('mouthPath'+n).disabled=working;
+  }
+  $('createLipSyncBtn').disabled=working||!destination||!ready||dirty||!mouthFolders[0];
+  $('createLipSyncBtn').textContent=lipSyncExporting?'Creating lip-sync script…':'Create lip-sync composition';
+  $('lipSyncHint').textContent=lipSyncExporting?'Saving the script to your destination folder…':!mouthFolders[0]?
+    'Choose a mouth folder. Add a mouth_map.csv to say which image is which mouth shape.':busy?'Wait for audio and word timings to finish.':
+    dirty?'Generate your edited messages before exporting.':!ready?'Generate audio and word timings first.':
+    !destination?'Choose a destination folder for the script.':
+    `${mode==='multi'?'One mouth per voice':'One mouth'} · hold keyframes on a Mouth pose slider · uses saved audio, no credits.`;
+  const signature=JSON.stringify([mode,batchId,jobs.map(j=>j?.id),destination?.token,dirty,mouthFolders.map(m=>m?.token),$('aeResolution').value,$('aeFps').value]);
+  if(signature!==lipSyncSignature){$('lipSyncResult').hidden=true;lipSyncSignature=signature;}
+}
+function mouthSummary(folder) {
+  return `${folder.poses} pose${folder.poses===1?'':'s'} · ${folder.table==='built-in'?'built-in table for the 20-pose set':'shapes from mouth_map.csv'}`;
+}
+async function chooseMouths(n,usePath=false) {
+  if(mouthBusy)return;mouthBusy=true;syncLipSyncControls();
+  const hint=$('mouthHint'+n);
+  hint.textContent=usePath?'Checking folder…':'Choose a folder in the system dialog…';
+  try {
+    const path=$('mouthPath'+n).value.trim();
+    if(usePath&&!path&&n>1){mouthFolders[n-1]=null;hint.textContent='Uses Voice 1 mouths.';return;}
+    const data=await api('/api/mouth-folder',usePath?{path}:{});
+    if(data.mouths){mouthFolders[n-1]=data.mouths;$('mouthPath'+n).value=data.mouths.path;}
+    hint.textContent=mouthFolders[n-1]?mouthSummary(mouthFolders[n-1]):n>1?'Uses Voice 1 mouths.':'';
+  }catch(err){hint.textContent=err.message;}
+  finally{mouthBusy=false;syncConversationControls();}
+}
+async function createLipSync() {
+  if($('createLipSyncBtn').disabled)return;
+  const [width,height]=$('aeResolution').value.split('x').map(Number);
+  const mouths={};
+  lipSyncVoices().forEach(n=>{if(mouthFolders[n-1])mouths[String(n)]=mouthFolders[n-1].token;});
+  const body={destination_token:destination.token,settings:{width,height,fps:Number($('aeFps').value)},mouths,
+    ...(mode==='single'?{job_id:singleExportJob.id}:{batch_id:batchId})};
+  lipSyncExporting=true;$('lipSyncResult').hidden=true;syncConversationControls();
+  try {
+    const result=await api('/api/lip-sync',body);
+    $('lipSyncResultText').textContent=`Saved ${result.filename} · ${result.compositions} composition${result.compositions===1?'':'s'} · ${result.recordings} recording${result.recordings===1?'':'s'}.`;
+    $('downloadLipSync').href=result.download_url;$('downloadLipSync').hidden=!result.download_url;
+    $('lipSyncResult').hidden=false;
+  }catch(err){toast(err.message);}
+  finally{lipSyncExporting=false;syncConversationControls();}
+}
+
+const EXPORT_TARGETS={
+  after_effects:{app:'After Effects',file:'script',button:'Create an After Effects Composition',item:'composition',items:'compositions',download:'Download JSX'},
+  premiere:{app:'Premiere Pro',file:'XML',button:'Create a Premiere Pro Sequence',item:'sequence',items:'sequences',download:'Download XML'},
+  resolve:{app:'DaVinci Resolve',file:'script',button:'Create a DaVinci Resolve Timeline',item:'timeline',items:'timelines',download:'Download script'},
+};
+function exportTarget() {
+  const id=EXPORT_TARGETS[$('exportTarget').value]?$('exportTarget').value:'after_effects';
+  return {id,...EXPORT_TARGETS[id]};
+}
+function exportInstructions(target,result) {
+  const subtitles=result.subtitles?` Subtitles: ${result.subtitles} SRT file${result.subtitles===1?'':'s'} in ${result.subtitles_folder}.`:'';
+  if(target==='premiere')return `In Premiere Pro: File → Import, choose the XML. Keep the referenced WAV files.${subtitles?subtitles+' Import each SRT and drag it onto its sequence at 00:00.':''}`;
+  if(target==='resolve')return `In DaVinci Resolve, open a project, then Workspace → Console → Py3 and enter: exec(open(r'${result.path}', encoding='utf-8').read()) — keep the referenced WAV files.${subtitles}`;
+  return 'In After Effects: File → Scripts → Run Script File. Keep the referenced WAV files.';
 }
 
 async function createAfterEffects() {
   if($('createAeBtn').disabled)return;
+  const target=exportTarget();
   const [width,height]=$('aeResolution').value.split('x').map(Number);
-  const body={destination_token:destination.token,settings:{width,height,fps:Number($('aeFps').value),subtitles:$('aeSubtitles').value},
+  const body={target:target.id,destination_token:destination.token,settings:{width,height,fps:Number($('aeFps').value),subtitles:$('aeSubtitles').value},
     ...(mode==='single'?{job_id:singleExportJob.id}:{batch_id:batchId})};
   aeExporting=true;$('aeResult').hidden=true;syncConversationControls();
   try {
-    const result=await api('/api/after-effects',body);
-    $('aeResultText').textContent=`Saved ${result.filename} · ${result.compositions} composition${result.compositions===1?'':'s'} · ${result.recordings} recording${result.recordings===1?'':'s'}.`;
-    $('downloadAe').href=result.download_url;
+    const result=await api('/api/export',body);
+    $('aeResultText').textContent=`Saved ${result.filename} · ${result.compositions} ${result.compositions===1?target.item:target.items} · ${result.recordings} recording${result.recordings===1?'':'s'}.`;
+    $('downloadAe').href=result.download_url;$('downloadAe').hidden=!result.download_url;
+    $('downloadAe').textContent=target.download;
+    $('aeInstructions').textContent=exportInstructions(target.id,result);
     $('aeResult').hidden=false;
   }catch(err){toast(err.message);}
   finally{aeExporting=false;syncConversationControls();}

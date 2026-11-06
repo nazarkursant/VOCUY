@@ -79,20 +79,26 @@ def destination_for(token):
 
 def choose_folder():
     """Use the host's picker; a typed-path option is also available in the UI."""
+    path = pick_folder('Choose a folder for VOCUY audio')
+    return register_destination(path) if path else None
+
+
+def pick_folder(prompt):
+    """Return the folder chosen in the host's dialog, or None when cancelled."""
     try:
         if sys.platform == 'darwin':
-            command = ['osascript', '-e', 'POSIX path of (choose folder with prompt "Choose a folder for VOCUY audio")']
+            command = ['osascript', '-e', 'POSIX path of (choose folder with prompt "' + prompt + '")']
         elif os.name == 'nt':
             command = ['powershell', '-NoProfile', '-STA', '-Command',
                        'Add-Type -AssemblyName System.Windows.Forms; '
                        '$picker = New-Object System.Windows.Forms.FolderBrowserDialog; '
-                       '$picker.Description = "Choose a folder for VOCUY audio"; '
+                       '$picker.Description = "' + prompt + '"; '
                        'if ($picker.ShowDialog() -eq "OK") { $picker.SelectedPath }']
         else:
             command = [sys.executable, '-c',
                        'import tkinter as tk; from tkinter import filedialog; '
                        'root=tk.Tk(); root.withdraw(); '
-                       'print(filedialog.askdirectory(title="Choose a folder for VOCUY audio")); root.destroy()']
+                       'print(filedialog.askdirectory(title=' + repr(prompt) + ')); root.destroy()']
         result = subprocess.run(command, capture_output=True, text=True, timeout=180)
     except (OSError, subprocess.TimeoutExpired):
         raise ValueError('Folder picker unavailable. Enter the folder path below instead.') from None
@@ -100,8 +106,7 @@ def choose_folder():
         if sys.platform == 'darwin' and '-128' in result.stderr:
             return None
         raise ValueError('Folder picker unavailable. Enter the folder path below instead.')
-    path = result.stdout.strip()
-    return register_destination(path) if path else None
+    return result.stdout.strip() or None
 
 
 def export_wav(source, destination, stem):

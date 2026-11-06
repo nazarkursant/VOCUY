@@ -101,7 +101,8 @@
           <button id="generateBtn" type="button" class="generate-button" disabled><span id="generateLabel">Generate WAV + JSON</span><span aria-hidden="true">→</span></button>
           <button type="button" id="generateConversationBtn" class="generate-button" hidden disabled>Generate conversation</button>
           <p class="render-warning" id="generationHint">Speech + forced alignment use ElevenLabs credits.</p>
-          <div class="ae-export" aria-label="After Effects export">
+          <div class="ae-export" aria-label="Editor export">
+            <label for="exportTarget" class="ae-target">Editor<select id="exportTarget"><option value="after_effects">After Effects · JSX script</option><option value="premiere">Premiere Pro · XML sequence</option><option value="resolve">DaVinci Resolve · Python script</option></select></label>
             <div class="ae-settings">
               <label for="aeResolution">Resolution<select id="aeResolution"><option value="1080x1920">Vertical · 1080 × 1920</option><option value="1920x1080">Landscape · 1920 × 1080</option><option value="1080x1080">Square · 1080 × 1080</option></select></label>
               <label for="aeSubtitles">Subtitles<select id="aeSubtitles"><option value="words">Words</option><option value="phrases">Phrases</option><option value="off">Off</option></select></label>
@@ -109,8 +110,18 @@
             </div>
             <button id="createAeBtn" class="ae-button" type="button" disabled aria-describedby="aeHint">Create an After Effects Composition</button>
             <p id="aeHint" class="ae-hint">Generate audio and word timings to export. Word markers are included with subtitles Off.</p>
-            <p id="aeResult" class="ae-result" role="status" hidden><span id="aeResultText"></span> <a id="downloadAe" download>Download JSX</a><br>In After Effects: File → Scripts → Run Script File. Keep the referenced WAV files.</p>
+            <p id="aeResult" class="ae-result" role="status" hidden><span id="aeResultText"></span><a id="downloadAe" class="script-download" download>Download JSX</a><span id="aeInstructions">In After Effects: File → Scripts → Run Script File. Keep the referenced WAV files.</span></p>
           </div>
+          <details class="lip-sync" id="lipSyncPanel">
+            <summary id="lipSyncHeading">Lip sync · After Effects <span class="optional">talking mouths</span></summary>
+            <p class="ae-hint">Mouth images switch with the voice. A separate script: each voice gets a null with a Mouth pose slider, parenting its mouth and audio. Uses the resolution and frame rate above.</p>
+              <div class="mouth-row" id="mouthRow1"><label for="mouthPath1">Voice 1 mouths</label><div class="destination-controls"><input id="mouthPath1" type="text" placeholder="Folder of mouth images" autocomplete="off" spellcheck="false"><button type="button" id="chooseMouth1" class="header-btn">Choose</button><button type="button" id="useMouth1" class="text-button">Use path</button></div><p id="mouthHint1" class="ae-hint"></p></div>
+              <div class="mouth-row" id="mouthRow2" hidden><label for="mouthPath2">Voice 2 mouths <span class="optional">empty = same as Voice 1</span></label><div class="destination-controls"><input id="mouthPath2" type="text" placeholder="Folder of mouth images" autocomplete="off" spellcheck="false"><button type="button" id="chooseMouth2" class="header-btn">Choose</button><button type="button" id="useMouth2" class="text-button">Use path</button></div><p id="mouthHint2" class="ae-hint"></p></div>
+              <div class="mouth-row" id="mouthRow3" hidden><label for="mouthPath3">Voice 3 mouths <span class="optional">empty = same as Voice 1</span></label><div class="destination-controls"><input id="mouthPath3" type="text" placeholder="Folder of mouth images" autocomplete="off" spellcheck="false"><button type="button" id="chooseMouth3" class="header-btn">Choose</button><button type="button" id="useMouth3" class="text-button">Use path</button></div><p id="mouthHint3" class="ae-hint"></p></div>
+            <button id="createLipSyncBtn" class="ae-button" type="button" disabled aria-describedby="lipSyncHint">Create lip-sync composition</button>
+            <p id="lipSyncHint" class="ae-hint">Choose a mouth folder. Add a mouth_map.csv to say which image is which mouth shape.</p>
+            <p id="lipSyncResult" class="ae-result" role="status" hidden><span id="lipSyncResultText"></span><a id="downloadLipSync" class="script-download" download>Download JSX</a><span>In After Effects: File → Scripts → Run Script File. Keep the WAV files and mouth images.</span></p>
+          </details>
         </section>
       </div>
     </main>
